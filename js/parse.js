@@ -1,7 +1,11 @@
-/* PaperWorld · 工作室控制器：上传 → 解析 → 布展 → 归档 */
+/* PaperWorld 2.0 · 工作室控制器
+ * 上传 → 解析 → 六维度分析 → 动态布展 →（可选模型讲解）→ 归档 → 进入空间展馆
+ */
 import { el, $, initTheme, initTopbar, initMobileNav } from "./core/ui.js";
 import { extractPdf } from "./engine/extract.js";
-import { curate } from "./engine/curate.js";
+import { analyze } from "./engine/analyze.js";
+import { curate, applyPlan } from "./engine/curate.js";
+import { enhancePlan, getLLMConfig, saveLLMConfig, clearLLMConfig, isLLMEnabled } from "./engine/llm.js";
 import { saveExhibition, listExhibitions, deleteExhibition, makeId } from "./core/store.js";
 
 initTheme();
@@ -21,9 +25,10 @@ const $gallery = $("#gallery-grid");
 const STEPS = [
   { t: "读取 PDF 结构", d: "在本机打开文档，取回页数与页面尺寸", at: 5 },
   { t: "逐页抽取文本层", d: "重建单/双栏阅读顺序，把文字项拼回行与段", at: 52 },
-  { t: "识别论文骨架", d: "标题、作者、摘要、章节、图注、数值线索、参考文献", at: 70 },
-  { t: "生成可溯源展签", d: "每条原文语句绑定页码与逐字引文", at: 88 },
-  { t: "布展并归档", d: "写入本机展览库，随时可以重新进入", at: 100 },
+  { t: "识别骨架与图注", d: "标题、作者、摘要、章节、图注、数值线索、参考文献", at: 70 },
+  { t: "六维度分析论文", d: "研究背景 / 核心问题 / 创新点 / 技术路线 / 实验过程 / 结果", at: 88 },
+  { t: "动态规划展区与展品", d: "只建有原文依据的维度，按维度选展示形式", at: 94 },
+  { t: "生成展签并归档", d: "每条原文语句绑定页码与逐字引文，写入本机展览库", at: 100 },
 ];
 
 function renderSteps(pct, note) {
@@ -46,14 +51,13 @@ function setProgress(pct, note) {
   $pct.textContent = pct + "%";
   renderSteps(pct, note);
 }
-
 function resetUI() {
   $pipeline.classList.remove("is-hidden");
   $result.classList.add("is-hidden");
+  $("#analysis")?.classList.add("is-hidden");
   setProgress(0);
   $pipeline.scrollIntoView({ behavior: "smooth", block: "center" });
 }
-
 function fail(err) {
   console.error(err);
   $pct.textContent = "中断";
@@ -65,6 +69,35 @@ function fail(err) {
       text: "常见原因：PDF 是纯扫描图、文件加密、或浏览器存储配额不足。可以换一篇有文字层的论文再试。" })));
 }
 
+/* ---------- 策展解读面板 ---------- */
+function renderAnalysis(bp, llmResult) {
+  const box = $("#analysis");
+  if (!box) return;
+  box.classList.remove("is-hidden");
+  $("#analysis-status").textContent = llmResult.message;
+  $("#analysis-status").style.color = llmResult.applied ? "var(--verify)" : "var(--ink-3)";
+
+  const grid = $("#analysis-grid");
+  grid.textContent = "";
+  for (const d of bp.meta.analysis?.dimensions || []) {
+    grid.append(el("div", { class: "adim" },
+      el("div", { class: "adim__h" },
+        el("span", { class: "adim__t", text: d.name }),
+        el("span", { class: "adim__c", text: `${d.count} 条` })),
+      el("div", { class: "adim__p", text: d.count ? `P.${d.pages.join(" / P.")} · ${d.en}` : "未检出原文依据" }),
+      el("div", { class: "adim__q", text: d.representative || d.basis })));
+  }
+
+  const list = $("#plan-list");
+  list.textContent = "";
+  for (const p of bp.meta.plan || []) {
+    list.append(el("div", { class: "planlist__r" },
+      el("span", { class: "planlist__n", text: p.num }),
+      el("span", { class: "planlist__t", text: `${p.title} · ${p.count} 件展品` }),
+      el("span", { class: "planlist__m", text: ({ quotes: "随机展签", sections: "章节地图", numbers: "数值扫描", exhibit: "原文展墙", plain: "原文展墙", plates: "图谱", archive: "原文页图" })[p.form] || p.form })));
+  }
+}
+
 async function run(blob, sourceName) {
   if (!blob || blob.size < 1024) { fail(new Error("文件看起来是空的。")); return; }
   if (blob.size > 60 * 1024 * 1024) { fail(new Error("文件超过 60MB，请先压缩或换一篇。")); return; }
@@ -72,36 +105,44 @@ async function run(blob, sourceName) {
   $pct.style.color = "var(--gold)";
   try {
     const ex = await extractPdf(blob, ({ percent, detail }) => setProgress(percent, detail));
-    if (!ex.sentences.length) {
-      throw new Error("没有从这份 PDF 里读到可用的文字。扫描件需要先做 OCR。");
-    }
-    setProgress(90, `得到 ${ex.sentences.length} 条原文语句`);
-    const bp = curate(ex, { sourceName });
-    setProgress(95, "写入本机展览库…");
+    if (!ex.sentences.length) throw new Error("没有从这份 PDF 里读到可用的文字。扫描件需要先做 OCR。");
+
+    setProgress(88, `得到 ${ex.sentences.length} 条原文语句`);
+    const A = analyze(ex);
+    const hit = A.dimensions.filter((d) => d.count > 0).length;
+    setProgress(92, `命中 ${hit} 个研究维度`);
+    const bp = curate(ex, { sourceName, analysis: A });
+
+    setProgress(95, isLLMEnabled() ? "调用模型生成展区讲解…" : "按维度生成展区与展品…");
+    const llmResult = await enhancePlan(bp);
+    applyPlan(bp, llmResult);
+
+    setProgress(98, "写入本机展览库…");
     const id = makeId();
     await saveExhibition({ id, blueprint: bp, blob });
     setProgress(100);
 
     $("#result-title").textContent = bp.meta.title;
     $("#result-note").textContent =
-      `已生成 ${bp.halls.length} 间展厅、${Object.keys(bp.evidence).length} 条可溯源展签。正文全部是 PDF 原文直引，编辑性文字单独标注。展览与论文都只存在这台设备上。`;
+      `已规划 ${bp.halls.length} 间展区、${Object.keys(bp.evidence).length} 条可溯源展签。展区结构由六维度分析决定，正文全部是 PDF 原文直引，编辑性文字与模型讲解单独标注。展览与论文都只存在这台设备上。`;
     const stats = [
       ["页数", ex.pageCount], ["原文展签", Object.keys(bp.evidence).length],
-      ["章节", (bp.__raw?.sections || []).length], ["图注", ex.figures.length],
-      ["数值线索", ex.numbers.length], ["参考文献", ex.refs.length],
+      ["命中维度", hit], ["识别章节", (bp.__raw?.sections || []).length],
+      ["图注", ex.figures.length], ["参考文献", ex.refs.length],
     ];
     const box = $("#result-stats");
     box.textContent = "";
     for (const [l, v] of stats) box.append(el("div", { class: "result__s" },
       el("div", { class: "result__v", text: String(v) }),
       el("div", { class: "result__l", text: l })));
-    $("#enter").href = "index.html?e=" + encodeURIComponent(id);
+
+    $("#enter").href = "station.html?e=" + encodeURIComponent(id);
+    $("#enter-read").href = "hall.html?e=" + encodeURIComponent(id);
+    renderAnalysis(bp, llmResult);
     $result.classList.remove("is-hidden");
     renderGallery();
     $result.scrollIntoView({ behavior: "smooth", block: "center" });
-  } catch (err) {
-    fail(err);
-  }
+  } catch (err) { fail(err); }
 }
 
 /* ---------- 上传交互 ---------- */
@@ -125,8 +166,7 @@ $drop.addEventListener("drop", (e) => {
 $("#demo").addEventListener("click", async (e) => {
   e.stopPropagation();
   const btn = $("#demo");
-  btn.disabled = true;
-  btn.textContent = "正在取回内置论文…";
+  btn.disabled = true; btn.textContent = "正在取回内置论文…";
   try {
     const r = await fetch("assets/papers/aloha.pdf");
     if (!r.ok) throw new Error("内置论文读取失败 (" + r.status + ")");
@@ -139,10 +179,32 @@ $("#demo").addEventListener("click", async (e) => {
 
 $("#again").addEventListener("click", () => {
   $result.classList.add("is-hidden");
+  $("#analysis")?.classList.add("is-hidden");
   $pipeline.classList.add("is-hidden");
-  $filename.textContent = "";
-  $file.value = "";
+  $filename.textContent = ""; $file.value = "";
   $drop.scrollIntoView({ behavior: "smooth", block: "center" });
+});
+
+/* ---------- 可选模型设置 ---------- */
+const cfg = getLLMConfig();
+$("#llm-endpoint").value = cfg.endpoint;
+$("#llm-model").value = cfg.model;
+$("#llm-key").value = cfg.apiKey;
+$("#llm-toggle").addEventListener("click", () => $("#llmcfg").classList.toggle("is-open"));
+$("#llm-save").addEventListener("click", () => {
+  saveLLMConfig({
+    endpoint: $("#llm-endpoint").value.trim(),
+    model: $("#llm-model").value.trim(),
+    apiKey: $("#llm-key").value.trim(),
+  });
+  $("#llm-hint").textContent = isLLMEnabled()
+    ? "已保存。下次生成时会调用一次模型；失败会自动降级，不影响展馆生成。"
+    : "已清空端点/模型，当前使用本地维度分析（默认）。";
+});
+$("#llm-clear").addEventListener("click", () => {
+  clearLLMConfig();
+  for (const id of ["#llm-endpoint", "#llm-model", "#llm-key"]) $(id).value = "";
+  $("#llm-hint").textContent = "已清除配置，恢复本地维度分析。";
 });
 
 /* ---------- 展览库 ---------- */
@@ -151,21 +213,23 @@ function renderGallery() {
   $gallery.append(el("article", { class: "gcard" },
     el("div", { class: "gcard__tag", text: "CURATED · 人工策展示范展" }),
     el("div", { class: "gcard__t", text: "Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware" }),
-    el("div", { class: "gcard__m", text: "ALOHA / ACT · 8 间展厅 · 81 条逐字核对的引文 · 5 台互动装置 · 11 幅论文原图" }),
-    el("div", { class: "gcard__a" }, el("a", { class: "btn btn--sm", href: "index.html", text: "进入展馆 →" }))));
+    el("div", { class: "gcard__m", text: "ALOHA / ACT · 8 间展区 · 81 条逐字核对的引文 · 5 台互动装置" }),
+    el("div", { class: "gcard__a" },
+      el("a", { class: "btn btn--sm", href: "station.html", text: "进入空间站 →" }),
+      el("a", { class: "btn btn--ghost btn--sm", href: "hall.html", text: "直接阅读" }))));
 
   for (const x of listExhibitions()) {
     const date = new Date(x.created).toLocaleDateString("zh-CN");
+    const s = "?e=" + encodeURIComponent(x.id);
     $gallery.append(el("article", { class: "gcard" },
-      el("div", { class: "gcard__tag", text: "AUTO · 本地自动布展" }),
+      el("div", { class: "gcard__tag", text: "AI 策展 · 六维度分析" }),
       el("div", { class: "gcard__t", text: x.title }),
       el("div", { class: "gcard__m", text: `${x.source} · ${x.pages} 页 · ${x.evidenceCount} 条展签 · ${date}` }),
       el("div", { class: "gcard__a" },
-        el("a", { class: "btn btn--sm", href: "index.html?e=" + encodeURIComponent(x.id), text: "进入展馆 →" }),
-        el("button", {
-          class: "btn btn--ghost btn--sm", text: "移除",
-          onclick: async () => { await deleteExhibition(x.id); renderGallery(); },
-        }))));
+        el("a", { class: "btn btn--sm", href: "station.html" + s, text: "进入空间站 →" }),
+        el("a", { class: "btn btn--ghost btn--sm", href: "hall.html" + s, text: "直接阅读" }),
+        el("button", { class: "btn btn--ghost btn--sm", text: "移除",
+          onclick: async () => { await deleteExhibition(x.id); renderGallery(); } }))));
   }
 }
 renderGallery();

@@ -1,8 +1,11 @@
-# PaperWorld
+# PaperWorld 2.0 · 深空科研博物馆
 
-把一篇论文，变成一座可以走进去的科研展览。上传 PDF 后，PaperWorld 在浏览器本地解析文字层、重建章节与图注、挑出原文语句并布成展厅；每条结论都能点开，回到论文原页高亮核对。
+把一篇论文，变成一座漂浮在星海里的数字科研博物馆。镜头穿过星云与曲速隧道对接空间站，再进入一间间展区；展区结构由论文的六维度分析决定，每条结论都能点开回到论文原页高亮核对。
 
 **在线地址**：https://meng-p7.github.io/PaperWorld/
+
+2.0 新增了宇宙入口（`index.html`）、空间站展区中枢（`station.html`）与展馆阅读层（`hall.html`）。
+原 1.0 的 PDF 解析、证据核验、页码定位、蓝图格式全部原样保留；旧链接 `index.html?e=<id>` 会自动跳到 `hall.html`。
 
 ## 三个入口
 
@@ -64,3 +67,25 @@ python tools/build_blueprint.py
 ## 版权
 
 首展论文：arXiv:2304.13705v1，Tony Z. Zhao, Vikash Kumar, Sergey Levine, Chelsea Finn。插图与引文版权归原作者所有，本项目仅作研究与阅读展示之用。
+
+## 2.0 空间层与策展引擎
+
+| 路径 | 内容 |
+| --- | --- |
+| `index.html` | 宇宙入口：WebGL 星云 shader、3D 透视粒子、镜头推进 / 曲速 / 对接、全息停靠卡 |
+| `station.html` | 空间站：CSS 3D 透视走廊，展区节点来自真实蓝图，点击镜头对接到 `hall.html#展区` |
+| `hall.html` | 展馆阅读层：1.0 的渲染器、证据抽屉、原页高亮全部保留，新增全息展区导航与短转场 |
+| `js/cosmos/starfield.js` | 深空视觉引擎，WebGL 不可用时自动降级 Canvas2D 静态星图 |
+| `js/cosmos/camera.js` | 镜头数值控制器，与渲染解耦，尊重 reduced-motion |
+| `js/engine/analyze.js` | 六维度分析：研究背景 / 核心问题 / 创新点 / 技术路线 / 实验过程 / 结果与结论 |
+| `js/engine/curate.js` | 维度驱动的动态展区规划，输出仍是 `paperworld.blueprint/v1` |
+| `js/engine/llm.js` | 可选 OpenAI 兼容模型适配器，只写策展语与挑展品，逐条校验后降级 |
+| `css/cosmos.css` | 深空视觉层，只作用于宇宙页与全息导航，不改 2D 阅读排版 |
+
+**AI 策展的边界**：默认路径是真实的本地六维度分析 + 提取式策展，不调用大模型、不写新事实。
+在 `parse.html` 里填入模型端点后，模型也只负责展区讲解与展品挑选，输出会回查证据表，
+出现新数值或编造引文会被丢弃；失败自动降级并在「AI 策展解读」里如实说明。生成结果写进蓝图后固定，浏览不再调用模型。
+
+**空间体验的降级**：`prefers-reduced-motion` 下镜头动画直接跳过；移动端隐藏 3D 走廊改为纵向卡片列表；
+WebGL 不可用时星云降级为 Canvas2D；页面隐藏时停帧；星云 shader 以 0.8× 降采样渲染。
+所有页面都提供「跳过动画」「直接进入」「返回宇宙入口」的明确出口。

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>空间站 · PaperWorld 展区中枢</title>
+<meta name="description" content="PaperWorld 空间站：选择展区，镜头自动对接，进入科研展馆。">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/cosmos.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23040711'/><path d='M8 22V10l8 7 8-7v12' stroke='%238ce8ff' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+</head>
+<body class="cosmos-page">
+
+<div class="cosmos-loader" id="loader">
+  <div class="cosmos-loader__in">
+    <div class="cosmos-loader__mark">PaperWorld</div>
+    <div class="cosmos-loader__track"><i></i></div>
+    <div class="cosmos-loader__t">正在读取展区索引 · LOADING ZONES</div>
+  </div>
+</div>
+
+<canvas id="sky" class="cosmos__layer" aria-hidden="true"></canvas>
+<canvas id="particles" class="cosmos__layer cosmos__particles" aria-hidden="true"></canvas>
+<div class="cosmos__vignette" aria-hidden="true"></div>
+<div class="cosmos__scanlines" aria-hidden="true"></div>
+
+<header class="cosmos-topbar">
+  <a class="brand" href="index.html"><b>PaperWorld</b><span class="brand__sub">STATION / 展区中枢</span></a>
+  <nav class="cosmos-nav">
+    <a href="index.html" class="is-keep">← 宇宙入口</a>
+    <a href="parse.html">上传论文</a>
+    <a href="about.html">关于 / 方法</a>
+    <span class="cosmos-nav__sep"></span>
+    <button id="direct" class="is-keep"><span class="only-wide">跳过动画 · 直接阅读</span><span class="only-narrow">直接阅读</span></button>
+  </nav>
+</header>
+
+<main class="station" id="station">
+  <div class="station__head">
+    <div>
+      <div class="cosmos-kicker">STATION 01 · EXHIBITION MAP</div>
+      <h1 class="station__title" id="station-title">正在载入展馆…</h1>
+    </div>
+    <div class="station__side">
+      <div class="station__meta" id="station-meta">&nbsp;</div>
+      <div class="station__tools" style="margin-top:10px">
+        <button class="cbtn cbtn--ghost cbtn--sm" id="back">返回宇宙</button>
+        <span class="mono micro" id="backend" style="color:var(--cos-ink-3);align-self:center;letter-spacing:.14em"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="station__map" id="map">
+    <div class="station__floor" aria-hidden="true"></div>
+    <div class="station__corridor" id="corridor"></div>
+  </div>
+
+  <div class="station__legend">
+    <span>点击任意展区 → <b>镜头对接</b> → 进入该展区</span>
+    <span><b>Esc</b> 返回宇宙入口</span>
+    <span>展区与证据数量来自论文蓝图，非静态示例</span>
+  </div>
+</main>
+
+<div class="warp-flash" id="flash" aria-hidden="true"></div>
+
+<script type="module" src="js/cosmos/station.js"></script>
+</body>
+</html>

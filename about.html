@@ -3,21 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>关于 / 方法 · PaperWorld</title>
-<meta name="description" content="PaperWorld 的生成链路、准确性契约、技术架构与已知边界。">
+<title>关于 / 方法 · PaperWorld 2.0</title>
+<meta name="description" content="PaperWorld 2.0 的空间体验、六维度 AI 策展链路、准确性契约、技术架构与已知边界。">
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/exhibition.css">
 <link rel="stylesheet" href="css/studio.css">
+<link rel="stylesheet" href="css/cosmos.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2306080b'/><path d='M8 22V10l8 7 8-7v12' stroke='%23f2b45c' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
 </head>
-<body>
+<body class="cosmos-studio">
 <canvas id="bg-canvas" aria-hidden="true"></canvas>
 
 <header class="topbar">
   <a class="brand" href="index.html"><b>PaperWorld</b><span class="brand__sub">科研展览</span></a>
   <nav class="topnav">
-    <a href="index.html">本展</a>
+    <a href="index.html">宇宙入口</a>
+    <a href="station.html">空间站</a>
     <a href="parse.html">上传论文</a>
     <a href="about.html" class="is-active">关于 / 方法</a>
     <button class="iconbtn js-theme" aria-label="切换深浅主题" title="切换深浅主题">
@@ -28,7 +30,8 @@
     </button>
   </nav>
   <div id="mobile-menu" class="mobile-menu" aria-label="移动端导航">
-    <a href="index.html">本展 · 展览大厅</a>
+    <a href="index.html">宇宙入口</a>
+    <a href="station.html">空间站 · 展区中枢</a>
     <a href="parse.html">上传论文 · 生成展览</a>
     <a href="about.html">关于 / 方法</a>
   </div>
@@ -36,50 +39,52 @@
 
 <main class="studio page">
   <div class="studio__eyebrow">
-    <span class="tag">PAPERWORLD / METHOD</span>
-    <span class="mono micro dimmer">ACCURACY CONTRACT v1</span>
+    <span class="tag">PAPERWORLD 2.0 / METHOD</span>
+    <span class="mono micro dimmer">ACCURACY CONTRACT v2</span>
   </div>
   <h1 class="studio__title">可以很有想象力，<br>但不该<em>替论文编事实</em></h1>
   <p class="studio__lead">
-    把论文变成展览，最难的不是把页面做漂亮，而是别在转述里悄悄改掉作者的意思。
-    PaperWorld 的做法有点「反 AI」：能直接引用的就一个字不改地引用，需要过渡的地方就明说这是编辑写的。
-    下面是这套规矩的完整说明。
+    2.0 把展馆放进了深空：镜头穿过星云与曲速隧道对接空间站，再进入一间间展区。
+    但越像电影，越要守住一件事——别在转述里悄悄改掉作者的意思。
+    能直接引用的就一个字不改地引用，需要过渡的地方就明说这是编辑写的，模型写的更要标出来。
   </p>
 
   <section class="methodsect">
-    <div class="tag">01 / THREE EXPERIENCES</div>
-    <h2>三种体验，落在同一条动线上</h2>
+    <div class="tag">01 / SPATIAL EXPERIENCE</div>
+    <h2>三层空间，各司其职</h2>
     <div class="triad">
-      <div class="triad__c"><div class="triad__n">MUSEUM 博物馆</div><div class="triad__t">空间感</div><div class="triad__x">暗场灯光、编号展厅、展签与标本墙；左侧窄轨是当前所在展厅，顶部细线是全程进度。阅读从「往下翻」变成「往里走」。</div></div>
-      <div class="triad__c"><div class="triad__n">MAGAZINE 杂志</div><div class="triad__t">叙事感</div><div class="triad__x">衬线大标题、首字下沉、策展人语、章节编号与留白节奏。每个展厅用一句问题开场，用原文作答。</div></div>
-      <div class="triad__c"><div class="triad__n">LABORATORY 实验室</div><div class="triad__t">可验证</div><div class="triad__x">action chunking 模拟器、成功率对照台、消融锚点、成本对照、章节地图、数值扫描、原文页图——都能点，都能回到出处。</div></div>
+      <div class="triad__c"><div class="triad__n">COSMOS 深空</div><div class="triad__t">宇宙入口</div><div class="triad__x">WebGL 星云 shader、3D 透视粒子、星球与全息空间站。点击或滚动推进镜头，巡航 → 曲速 → 对接；随时可跳过动画。</div></div>
+      <div class="triad__c"><div class="triad__n">STATION 空间站</div><div class="triad__t">展区中枢</div><div class="triad__x">CSS 3D 透视走廊里排布真实展区节点，编号、名称、证据数都来自蓝图。点节点镜头自动移动并进入对应展区。</div></div>
+      <div class="triad__c"><div class="triad__n">HALL 展馆</div><div class="triad__t">高质量 2D 阅读</div><div class="triad__x">全息导航条 + 短转场负责空间感；正文排版、证据抽屉、原页高亮、互动装置保持 2D，不为特效牺牲可读性。</div></div>
     </div>
   </section>
 
   <section class="methodsect">
-    <div class="tag">02 / PIPELINE</div>
-    <h2>从 PDF 到展厅，中间发生了什么</h2>
+    <div class="tag">02 / CURATION PIPELINE</div>
+    <h2>AI 的职责是理解论文、生成展馆</h2>
     <div class="flow">
       <div class="flow__i"><div class="flow__n">STEP 01</div><div class="flow__t">取文字层</div><div class="flow__x">pdf.js 逐页读回文本项与坐标，按 y 归行、按 x 判断单/双栏，拼回可读顺序。</div></div>
-      <div class="flow__i"><div class="flow__n">STEP 02</div><div class="flow__t">认结构</div><div class="flow__x">按字号与编号格式找标题、摘要、章节、Fig./Table 图注、数值与参考文献。</div></div>
-      <div class="flow__i"><div class="flow__n">STEP 03</div><div class="flow__t">挑原句</div><div class="flow__x">断句后按信息量打分，选进命题、方法、数据、边界四个主题；句子本身一字不改。</div></div>
-      <div class="flow__i"><div class="flow__n">STEP 04</div><div class="flow__t">锚定</div><div class="flow__x">每句生成一条 evidence：页码 + 章节 + 原句。策展语单独成块，界面上明确标注。</div></div>
-      <div class="flow__i"><div class="flow__n">STEP 05</div><div class="flow__t">布展</div><div class="flow__x">同一套渲染器把蓝图变成展厅；点页码时用 pdf.js 重绘原页，并把引文矩形高亮出来。</div></div>
+      <div class="flow__i"><div class="flow__n">STEP 02</div><div class="flow__t">认结构</div><div class="flow__x">标题、作者、摘要、章节、Fig./Table 图注、数值线索、参考文献。</div></div>
+      <div class="flow__i"><div class="flow__n">STEP 03</div><div class="flow__t">六维度分析</div><div class="flow__x">按原文措辞信号与版面位置，把句子归入研究背景 / 核心问题 / 创新点 / 技术路线 / 实验过程 / 结果与结论。</div></div>
+      <div class="flow__i"><div class="flow__n">STEP 04</div><div class="flow__t">动态规划展区</div><div class="flow__x">只建有原文依据的维度；按维度选随机展签、章节地图或数值扫描；展品是逐字原句 + 页码锚。</div></div>
+      <div class="flow__i"><div class="flow__n">STEP 05</div><div class="flow__t">讲解（可选模型）</div><div class="flow__x">可接入 OpenAI 兼容模型写策展语、挑展品；返回逐条校验，不合规即降级。生成一次后写进蓝图，逛展不再调用。</div></div>
+      <div class="flow__i"><div class="flow__n">STEP 06</div><div class="flow__t">进入空间</div><div class="flow__x">蓝图交给同一套渲染器；空间站读取 halls 生成展区节点，镜头对接后落到 2D 展馆。</div></div>
     </div>
     <p class="small dim" style="margin-top:16px;max-width:76ch;line-height:1.9">
-      内置示范展走的是另一条更严格的路：81 条引文由构建脚本逐条与 <span class="mono">arXiv:2304.13705v1</span>
+      内置示范展走另一条更严格的路：81 条引文由构建脚本逐条与 <span class="mono">arXiv:2304.13705v1</span>
       的 PDF 文本做去空白归一后比对，任何一条对不上，构建直接失败、不产出展览。
     </p>
   </section>
 
   <section class="methodsect">
     <div class="tag">03 / ACCURACY CONTRACT</div>
-    <h2>四条不会让的规矩</h2>
+    <h2>五条不会让的规矩</h2>
     <div class="contract">
       <div class="contract__i"><div class="contract__t">原文就是原文</div><div class="contract__x">自动展的正文只放从 PDF 文本层拼回来的逐字字符串。不改写、不翻译、不概括、不补因果。</div></div>
-      <div class="contract__i"><div class="contract__t">策展语显式标注</div><div class="contract__x">编辑写的过渡句用「策展语 · 非原文」单独成块、用另一种颜色与字形呈现，永远不混进原文段落。</div></div>
+      <div class="contract__i"><div class="contract__t">策展语显式标注</div><div class="contract__x">编辑写的过渡句用「策展语 · 非原文」单独成块；模型生成的讲解标成「AI 策展语 · 模型生成 · 非原文」，永远不混进原文段落。</div></div>
+      <div class="contract__i"><div class="contract__t">模型不能新增事实</div><div class="contract__x">模型只输出展区讲解与展品挑选；引文 id 必须存在于证据表，讲解里出现新百分比即丢弃该条，失败自动降级到本地分析。</div></div>
       <div class="contract__i"><div class="contract__t">重要结论必须可回到原页</div><div class="contract__x">每个原文块都挂页码标记，点开给出原句与页码，再点一次直接渲染那一页 PDF 并尝试高亮。</div></div>
-      <div class="contract__i"><div class="contract__t">没有的数据不画</div><div class="contract__x">消融图只摆论文报告过的锚点，未给数值的区间标成「未报告」；数值扫描只画原文里出现过的数字，不插值。</div></div>
+      <div class="contract__i"><div class="contract__t">没有的数据不画</div><div class="contract__x">展区数量由实际检出的原文条数决定；数值扫描只画原文出现过的数字，不插值；消融图只摆论文报告过的锚点。</div></div>
     </div>
   </section>
 
@@ -89,12 +94,14 @@
     <table class="archtable">
       <thead><tr><th>层</th><th>实现</th><th>为什么这样选</th></tr></thead>
       <tbody>
-        <tr><td>运行时</td><td>纯静态站点，原生 ES Modules，无构建步骤、无框架、无 CDN 依赖</td><td>可直接托管在任意静态空间；离线也能打开；长期可维护。</td></tr>
+        <tr><td>运行时</td><td>纯静态站点，原生 ES Modules，无构建步骤、无框架、无 CDN 依赖</td><td>可直接托管在 GitHub Pages；离线也能打开；长期可维护。</td></tr>
+        <tr><td>宇宙层</td><td>WebGL fragment shader（星云/星球/曲速光条）+ Canvas2D 透视粒子 + CSS 3D 空间站走廊</td><td>只在入口与转场用特效，正文层零 WebGL；WebGL 不可用自动降级到 Canvas2D 静态星图。</td></tr>
+        <tr><td>镜头</td><td>独立的 camera.js 把滚动/点击映射为 z 与 warp 数值，阶段为巡航 / 曲速 / 对接</td><td>动画与渲染解耦；reduced-motion 直接跳过；页面隐藏时停帧；移动端减少粒子与 DPR。</td></tr>
+        <tr><td>策展引擎</td><td><span class="mono">analyze.js</span> 六维度分类 → <span class="mono">curate.js</span> 动态规划展区 → <span class="mono">llm.js</span> 可选模型适配</td><td>展区结构由论文内容决定，不是模板；模型输出必须回查证据表才能落地。</td></tr>
         <tr><td>PDF</td><td>本地打包的 pdf.js，逐页取文本项并渲染原页</td><td>溯源要拿到「那一页」和「那几个字的位置」，只能自己解析 PDF。</td></tr>
-        <tr><td>数据</td><td><span class="mono">paperworld.blueprint/v1</span> JSON：meta / evidence / halls / blocks</td><td>内容与渲染完全解耦，示范展和自动展共用一套渲染器。</td></tr>
+        <tr><td>数据</td><td><span class="mono">paperworld.blueprint/v1</span> JSON：meta / evidence / halls / blocks</td><td>1.0 的蓝图格式原样保留，示范展、自动展、空间站共用一套渲染器。</td></tr>
         <tr><td>持久化</td><td>IndexedDB 存 PDF Blob，localStorage 存展览蓝图与索引</td><td>刷新后仍能重开展览并做原页高亮；文件不上传服务器。</td></tr>
-        <tr><td>视觉</td><td>CSS 变量双主题（暗场展厅 / 纸张阅读）、Canvas 蓝图背景、IntersectionObserver 揭示动效</td><td>尊重 <span class="mono">prefers-reduced-motion</span>，移动端降级，无外部字体请求。</td></tr>
-        <tr><td>校验</td><td>构建期逐字比对；运行期证据引用完整性检查；浏览器双端渲染体检</td><td>把「不编」做成可执行的检查，而不是一句口号。</td></tr>
+        <tr><td>校验</td><td>构建期逐字比对；运行期证据引用完整性检查；浏览器双端渲染与性能体检</td><td>把「不编」做成可执行的检查，而不是一句口号。</td></tr>
       </tbody>
     </table>
   </section>
@@ -109,7 +116,7 @@
       也明确写下了两个学不会的任务。一个愿意把失败摆出来的研究对象，最适合做第一座诚实的展馆。
     </p>
     <div class="row wrap" style="gap:10px;margin-top:var(--space-5)">
-      <a class="btn" href="index.html">去看首展 →</a>
+      <a class="btn" href="station.html">进入空间站 →</a>
       <a class="btn btn--ghost" href="parse.html">上传我的论文</a>
     </div>
   </section>
@@ -122,8 +129,10 @@
       <ul>
         <li>扫描版 PDF 没有文字层，解析会直接报错；本版本不含 OCR。</li>
         <li>双栏、脚注、跨栏表格与数学公式的阅读顺序可能被还原错，复杂的 LaTeX 论文需要人工复核。</li>
-        <li>自动展的「生成」是提取式策展，不调用生成式大模型，因此叙事较朴素，也不会替论文做跨段推理或总结。</li>
-        <li>章节、图注与作者署名靠字号/编号启发式识别，遇到非标准排版会漏检或只认出部分作者；漏检时界面会写「未检出」，完整署名请回原文首页核对。</li>
+        <li>六维度归类是启发式信号匹配，不是语义理解模型；遇到措辞非常规的论文可能归类偏差或漏检，漏检时界面会写「未检出」。</li>
+        <li>外部模型默认关闭；填写端点后仍可能因为浏览器跨域限制而被拒绝，此时会自动降级到本地分析，并在策展解读里说明原因。</li>
+        <li>生成式模型只写策展语与挑展品，不做跨段推理、不写结论，因此叙事仍比通用聊天式 AI 朴素。</li>
+        <li>WebGL 不可用时星云会降级为静态 Canvas 星图；低性能设备会减少粒子数与 DPR，镜头动画可通过「跳过动画」完全略过。</li>
         <li>原页高亮依赖引文在 PDF 文本项里能连续匹配；跨栏或断字严重时可能定位不到，此时会提示「未定位到引文」。</li>
         <li>展览存在浏览器本机，换设备、换浏览器或清除站点数据后不会同步；上传的 PDF 也只在本机。</li>
       </ul>
@@ -142,7 +151,7 @@
         </p>
       </div>
       <div class="mono micro dimmer" style="text-align:right;line-height:2">
-        PAPERWORLD · EXHIBITION 00<br>METHOD / ACCURACY CONTRACT<br>BUILT LOCAL-FIRST
+        PAPERWORLD 2.0<br>DEEP SPACE MUSEUM / METHOD<br>BUILT LOCAL-FIRST
       </div>
     </div>
   </div>

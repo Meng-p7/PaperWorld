@@ -135,6 +135,16 @@ const blocks = {
   editorial: (b) => el("div", { class: "block editorial reveal" },
     el("span", { class: "editorial__tag", text: "策展语 · 非原文" }),
     el("p", { text: b.text })),
+  /* 2.0：维度展签 / 全息展品（自动展的动态展区使用） */
+  dimension: (b) => el("div", { class: "block dimension reveal" },
+    el("div", { class: "dimension__n", text: b.n || "DIMENSION" }),
+    el("div", { class: "dimension__body" },
+      el("div", { class: "dimension__t", text: b.title }),
+      el("div", { class: "dimension__x", text: b.text })),
+    el("div", { class: "dimension__pages", text: b.pages || "" })),
+  exhibit: (b) => el("div", { class: "block exhibit reveal" },
+    el("div", { class: "exhibit__t", text: b.title || "AI 策展语 · 非原文" }),
+    el("div", { class: "exhibit__x", text: b.text })),
   chapter: (b) => el("div", { class: "block chapter reveal" },
     el("div", { class: "chapter__head" },
       el("span", { class: "chapter__t", text: b.title }),
@@ -314,6 +324,55 @@ function buildProgress() {
   addEventListener("scroll", onScroll, { passive: true });
 }
 
+/* ---------------- 2.0 全息展区导航 + 空间转场 ---------------- */
+function initHoloNav() {
+  const holder = $("#holo-links");
+  if (!holder) return;
+  const eid = new URLSearchParams(location.search).get("e");
+  const suffix = eid ? "?e=" + encodeURIComponent(eid) : "";
+  $("#holo-back").href = "station.html" + suffix;
+
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const flash = $("#hall-warp");
+  const links = [];
+
+  function warpTo(hid) {
+    const target = document.getElementById(hid);
+    if (!target) return;
+    if (flash && !reduced) {
+      flash.classList.add("is-on");
+      setTimeout(() => flash.classList.remove("is-on"), 230);
+    }
+    document.documentElement.style.scrollBehavior = "auto";
+    target.scrollIntoView({ behavior: "instant", block: "start" });
+    scrollBy(0, -128); // 让开固定顶栏 + 全息导航条
+    setTimeout(() => { document.documentElement.style.scrollBehavior = ""; }, 80);
+    links.forEach((a) => a.classList.toggle("is-on", a.dataset.hall === hid));
+  }
+
+  for (const h of BP.halls) {
+    const a = el("a", {
+      href: "#" + h.id, dataset: { hall: h.id },
+      text: `${h.num || "00"} ${(h.title || "").slice(0, 12)}`,
+      onclick: (e) => { e.preventDefault(); warpTo(h.id); },
+    });
+    holder.append(a);
+    links.push(a);
+  }
+
+  // 从空间站带 #展区 进入：内容渲染完成后再定位
+  if (location.hash) {
+    const hid = decodeURIComponent(location.hash.slice(1));
+    setTimeout(() => warpTo(hid), 160);
+  } else {
+    const io = new IntersectionObserver((es) => {
+      for (const e of es) if (e.isIntersecting)
+        links.forEach((a) => a.classList.toggle("is-on", a.dataset.hall === e.target.id));
+    }, { rootMargin: "-45% 0px -45% 0px" });
+    BP.halls.forEach((h) => { const n = document.getElementById(h.id); if (n) io.observe(n); });
+  }
+}
+
 /* ---------------- 启动 ---------------- */
 async function boot() {
   const result = await resolveBlueprint();
@@ -330,7 +389,7 @@ async function boot() {
   document.title = `PaperWorld · ${BP.meta.title || BP.halls[0].title}`.slice(0, 110);
 
   if (BP.meta.mode === "extractive") {
-    const badge = el("span", { class: "auto-badge", text: "AUTO · 自动布展" });
+    const badge = el("span", { class: "auto-badge", text: BP.meta.curationLabel || "AUTO · 自动布展" });
     $(".brand")?.append(badge);
   }
 
@@ -354,6 +413,7 @@ async function boot() {
   initTopbar();
   initReveal();
   initMobileNav();
+  initHoloNav();
 }
 
 boot();

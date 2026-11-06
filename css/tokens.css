@@ -61,37 +61,37 @@
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --bg: #06080b;
-  --bg-elev: #0a0e13;
-  --surface: #0f141b;
-  --surface-2: #151c25;
-  --surface-3: #1c2530;
+  --bg: #060a16;
+  --bg-elev: #0a1020;
+  --surface: #0d1628;
+  --surface-2: #131e33;
+  --surface-3: #1b2942;
 
-  --line: rgba(233, 240, 248, 0.09);
-  --line-strong: rgba(233, 240, 248, 0.18);
+  --line: rgba(178, 206, 248, 0.10);
+  --line-strong: rgba(178, 206, 248, 0.20);
 
-  --ink: #edf1f6;
-  --ink-2: #a8b3c0;
-  --ink-3: #6d7885;
+  --ink: #edf3ff;
+  --ink-2: #a9b8d2;
+  --ink-3: #6f80a1;
 
   --gold: #f2b45c;
   --gold-hi: #ffcd85;
   --gold-soft: rgba(242, 180, 92, 0.13);
   --gold-line: rgba(242, 180, 92, 0.34);
 
-  --cyan: #66d9e8;
-  --cyan-soft: rgba(102, 217, 232, 0.12);
-  --cyan-line: rgba(102, 217, 232, 0.32);
+  --cyan: #7de3ff;
+  --cyan-soft: rgba(125, 227, 255, 0.12);
+  --cyan-line: rgba(125, 227, 255, 0.34);
 
   --verify: #6fe3a5;
   --verify-soft: rgba(111, 227, 165, 0.13);
   --flag: #ff8172;
   --flag-soft: rgba(255, 129, 114, 0.13);
 
-  --grid-line: rgba(140, 170, 200, 0.055);
-  --grid-dot: rgba(160, 190, 220, 0.16);
-  --vignette: radial-gradient(120% 90% at 50% 0%, transparent 40%, rgba(0, 0, 0, 0.55) 100%);
-  --spotlight: radial-gradient(60% 45% at 50% 0%, rgba(242, 180, 92, 0.09), transparent 70%);
+  --grid-line: rgba(125, 170, 235, 0.06);
+  --grid-dot: rgba(150, 195, 255, 0.18);
+  --vignette: radial-gradient(120% 90% at 50% 0%, transparent 40%, rgba(2, 5, 16, 0.62) 100%);
+  --spotlight: radial-gradient(60% 45% at 50% 0%, rgba(125, 170, 255, 0.10), transparent 70%);
 }
 
 /* ============ 纸张阅读 ============ */

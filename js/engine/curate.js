@@ -1,13 +1,16 @@
-/* PaperWorld · 提取式策展引擎
+/* PaperWorld 2.0 · 维度驱动策展引擎
  *
- * 设计契约（这是整个产品「不编」的实现）：
- *   1. 展厅里的每一句「原文」都是 PDF 文本项拼回来的逐字字符串，绝不改写、翻译、补写；
- *   2. 每个原文块都挂一条 evidence，含页码与原句，可在原页高亮定位；
- *   3. 编辑写的过渡文字一律用 `editorial` 块，界面上明确标注「策展语 · 非原文」；
- *   4. 数值图表只画「原文里出现过的数」，不插值、不推测、不补缺失锚点。
+ * 与 1.0 的区别：不再用固定的「命题 / 结构 / 数据 / 图谱 / 边界」模板套所有论文，
+ * 而是先由 analyze.js 判断这篇论文在六个研究维度上各有哪些原文依据，
+ * 再据此**动态决定建几间展厅、每间放什么形式、每件展品是哪一句原文**。
  *
- * 因此本引擎不会凭空产生一个结论。它做的是：从原文里挑句子、排序、布展、锚定。
+ * 不变的红线（与 1.0 完全一致，保证数据兼容）：
+ *   1. blueprint 仍是 paperworld.blueprint/v1，meta/evidence/halls/blocks 结构不变；
+ *   2. evidence 每条含 page / section / claim / quote / verified / origin，可被 pdfview 原页高亮；
+ *   3. 原文块（verbatim）逐字取自 PDF，编辑性文字单独成块并标注；
+ *   4. 数值装置只画原文出现过的数。
  */
+import { analyze } from "./analyze.js";
 
 const TOPIC_WORDS = [
   ["机器人", /robot|manipulat|arm|gripper|teleop/i],
@@ -15,109 +18,63 @@ const TOPIC_WORDS = [
   ["视觉", /vision|image|camera|perception|visual/i],
   ["仿真", /simulation|sim2real|mujoco/i],
   ["数据集", /dataset|benchmark|corpus/i],
-  ["制造", /manufactur|assembly|industrial|factory/i],
+  ["智能制造", /manufactur|assembly|industrial|factory/i],
 ];
-
 function detectTopics(text) {
   const hits = TOPIC_WORDS.filter(([, re]) => re.test(text)).map(([n]) => n);
   return (hits.length ? hits : ["学术研究"]).slice(0, 4).join(" · ");
 }
 
-function splitAbstract(s) {
-  return (s || "").replace(/\s+/g, " ")
-    .split(/(?<=[.!?])\s+(?=[A-Z“"(])/)
-    .map((x) => x.trim())
-    .filter((x) => x.length >= 45 && x.length <= 330 && !/^[a-z(]/.test(x));
-}
+const FORM_IX = {
+  quotes: { id: "auto-quotes", title: "随机展签 · 从本维度原文抽一句" },
+  sections: { id: "auto-sections", title: "章节地图 · CHAPTER MAP" },
+  numbers: { id: "auto-numbers", title: "数值扫描 · NUMBER SCAN" },
+};
 
-const LIMIT_RE = /\b(?:limitation|future work|fail|cannot|does not|however|remain|challenge|only|unable|difficult|bias|restricted)\b/i;
-const NUM_RE = /\d/;
-const METHOD_RE = /\b(?:we (?:propose|present|introduce|design|use|train)|method|architecture|system|framework|algorithm|model|hardware)\b/i;
-
-export function curate(ex, { sourceName = "上传的论文.pdf" } = {}) {
+export function curate(ex, { sourceName = "上传的论文.pdf", analysis = null } = {}) {
+  const A = analysis || analyze(ex);
   const evidence = {};
   const refsInline = ex.refs || [];
   let n = 0;
   const addEv = (s, label) => {
     const id = "a" + String(++n).padStart(3, "0");
     evidence[id] = {
-      page: s.page,
-      section: s.section || "—",
+      page: s.page, section: s.section || "—",
       claim: label || "自动摘录的原文语句（未经改写）",
-      quote: s.text,
-      verified: true,
-      origin: "extractive",
+      quote: s.text, verified: true, origin: "extractive",
     };
     return id;
   };
   const vblock = (s, label) => ({ t: "verbatim", text: s.text, ev: addEv(s, label) });
   const ed = (text) => ({ t: "editorial", text });
 
-  const pool = [...ex.sentences];
-  const take = (filter, k, exclude = new Set()) => {
-    const picked = [];
-    for (const s of pool) {
-      if (picked.length >= k) break;
-      if (exclude.has(s.text) || !filter(s)) continue;
-      picked.push(s);
-      exclude.add(s.text);
-    }
-    return picked;
-  };
-
-  const used = new Set();
-  const abstractParts = splitAbstract(ex.abstract).slice(0, 5).map((text) => ({
-    text, page: 1, section: "Abstract", score: 9,
-  }));
-  const problem = [...abstractParts];
-  for (const s of take((s) => s.score >= 5 || /first page|首页/i.test(s.section), 3, used)) {
-    if (problem.length < 5 && !problem.some((p) => p.text === s.text)) problem.push(s);
-  }
-  const method = take((s) => s.score >= 3 && METHOD_RE.test(s.text), 5, used);
-  const numeric = take((s) => NUM_RE.test(s.text) && s.score >= 3 && /%|\$\d|\d+\s?(?:Hz|ms|kg|mm)/.test(s.text), 5, used);
-  const limits = take((s) => LIMIT_RE.test(s.text), 4, used);
-  const closing = take((s) => s.page >= Math.max(2, ex.pageCount - 3), 3, used);
-  for (const s of closing) if (limits.length < 5 && !limits.includes(s)) limits.push(s);
-
   const sections = (ex.sections || []).slice(0, 14);
   const figures = (ex.figures || []).slice(0, 6);
   const thumbs = ex.thumbs || new Map();
   const teaser = thumbs.get(1) || null;
-
   const date = new Date().toISOString().slice(0, 10);
-  const meta = {
-    id: "auto",
-    title: ex.title,
-    pdf: ex.url,
-    pages: ex.pageCount,
-    sourceName,
-    generatedAt: date,
-    mode: "extractive",
-    engine: "PaperWorld 本地解析 · 提取式策展 v1",
-    refsInline,
-    colophon: `本展由 PaperWorld 在本地浏览器中依据《${sourceName}》自动生成。全部原文语句逐字取自 PDF 文本层并标注页码；策展语为编辑性文字，已单独标注。论文不上传服务器，刷新页面后仍可从本机展览库重新打开。`,
-  };
 
+  const dims = A.dimensions.filter((d) => d.count > 0);
   const halls = [];
 
-  /* ---- 序厅 ---- */
+  /* ---------------- 序厅 ---------------- */
   const stats = [
     { label: "原文页数", value: String(ex.pageCount), sub: "逐页解析文本层" },
     { label: "可溯源展签", value: "—", sub: "点击即可回到原页", dynamic: "evidence" },
+    { label: "识别维度", value: String(dims.length), sub: "六维度分析命中数" },
     { label: "识别章节", value: String(sections.length), sub: "按版面字号还原" },
     { label: "图表标注", value: String((ex.figures || []).length), sub: "Fig. / Table / Algorithm" },
     { label: "数值线索", value: String((ex.numbers || []).length), sub: "原文中出现的百分比等" },
-    { label: "参考文献", value: String(refsInline.length), sub: "按条目切分" },
   ];
   halls.push({
     id: "facade", kind: "facade", num: "00",
     kicker: "EXHIBIT 00 · FACADE 序厅",
     title: ex.title,
-    titleZh: "由本地解析引擎自动布展 · 正文全部为原文直引",
+    titleZh: `按 ${dims.length} 个研究维度自动规划展区 · 正文全部为原文直引`,
     authors: [{ name: (ex.authors || []).length ? ex.authors.join(" · ") : "论文作者", aff: "见原文首页" }],
     venue: `${sourceName} · ${ex.pageCount} 页 · 布展于 ${date}`,
     domain: detectTopics(ex.abstract + " " + ex.title + " " + ex.sentences.slice(0, 40).map((s) => s.text).join(" ")),
-    curator: "这是一台「不写新句子」的策展机：它只从你的 PDF 里挑出句子、排好顺序、标上页码。金框里是原文，灰字是策展语——两者在展馆里永远不会混在一起。点任意页码标记，可以直接回到论文原页看高亮。",
+    curator: "这座展馆的平面图不是模板：程序先读完整篇论文，判断它在研究背景、核心问题、创新点、技术路线、实验过程、结果与结论上各有哪些原文依据，再决定建几间展厅、每间摆哪几句。金框里是原文，标了「策展语」的是编辑性文字——两者永不混在一起。点任意页码标记，回到论文原页看高亮。",
     stats,
     figure: teaser ? {
       src: teaser, page: 1,
@@ -125,95 +82,121 @@ export function curate(ex, { sourceName = "上传的论文.pdf" } = {}) {
     } : null,
   });
 
-  /* ---- 01 命题 ---- */
-  halls.push({
-    id: "question", kind: "narrative", num: "01",
-    kicker: "EXHIBIT 01 · THE QUESTION 命题厅",
-    title: "这篇论文想回答什么",
-    blocks: [
-      ed("进门第一间，只放原文本身。以下每句都逐字摘自论文摘要或首页，未经改写、未经翻译；右侧页码标记可回到原页核对。"),
-      ...problem.map((s) => vblock(s, "论文原始表述（摘要 / 首页）")),
-      { t: "interactive", id: "auto-quotes", title: "随机展签 · 从原文抽一句", engine: "auto" },
-    ],
+  /* ---------------- 按维度动态规划展厅 ---------------- */
+  const analysisMeta = [];
+  const plan = [];
+  dims.forEach((d, i) => {
+    const num = String(i + 1).padStart(2, "0");
+    const pages = d.pages.length ? `P.${Math.min(...d.pages)}–P.${Math.max(...d.pages)}` : "—";
+    const quotes = d.sentences.map((s) => vblock(s, `维度「${d.name}」的原文依据`));
+    const quoteIds = quotes.map((q) => q.ev);
+    const ix = FORM_IX[d.form];
+
+    const blocks = [
+      {
+        t: "dimension", n: `DIMENSION ${num} / ${d.en}`,
+        title: d.name, text: d.basis,
+        pages: `${pages} · ${d.count} 条原文`,
+      },
+      ed(`本展区由六维度分析自动归入 ${d.count} 条原文语句，展示形式按维度选为「${({ quotes: "随机展签", sections: "章节地图", numbers: "数值扫描", exhibit: "原文展墙", plain: "原文展墙" })[d.form]}」。下列每句都逐字摘自 PDF，未经改写与翻译。`),
+      ...quotes,
+    ];
+    if (ix) blocks.push({ t: "interactive", id: ix.id, title: ix.title, engine: "auto" });
+
+    const hid = "dim-" + d.id;
+    halls.push({
+      id: hid, kind: d.form, num,
+      kicker: `EXHIBIT ${num} · ${d.en} ${d.name}`,
+      title: d.name,
+      blocks,
+    });
+    analysisMeta.push({
+      id: d.id, name: d.name, en: d.en, count: d.count, pages: d.pages,
+      basis: d.basis, signals: d.signals, quoteIds,
+      representative: (evidence[quoteIds[0]]?.quote || "").slice(0, 160),
+    });
+    plan.push({ num, id: hid, title: d.name, count: d.count, form: d.form, pages });
   });
 
-  /* ---- 02 结构 ---- */
-  const chapterQuotes = sections.slice(0, 4).map((sec) => {
-    const s = take((x) => x.page === sec.page && x.score >= 2, 1, used)[0]
-      || take((x) => x.page === sec.page, 1, used)[0];
-    return { sec, s };
-  }).filter((x) => x.s);
-  halls.push({
-    id: "structure", kind: "method", num: "02",
-    kicker: "EXHIBIT 02 · THE BLUEPRINT 结构厅",
-    title: "论文的骨架，与它自己怎么说",
-    blocks: [
-      ed("先把论文当作一栋建筑：下面是按版面字号还原出的章节顺序。点章节可以直接翻到原文对应页。"),
-      { t: "interactive", id: "auto-sections", title: "章节地图 · CHAPTER MAP", engine: "auto" },
-      ...chapterQuotes.map(({ sec, s }) => ({ t: "chapter", title: sec.title, page: sec.page, blocks: [vblock(s, `章节「${sec.title.slice(0, 30)}」附近的原文`)] })),
-      ...method.slice(0, 3).map((s) => vblock(s, "方法 / 系统描述的原文语句")),
-    ],
-  });
-
-  /* ---- 03 数据 ---- */
-  halls.push({
-    id: "bench", kind: "bench", num: "03",
-    kicker: "EXHIBIT 03 · THE BENCH 数据台",
-    title: "论文里写下的数字",
-    blocks: [
-      ed("这里只画论文里真的出现过的数。没有报告的取值不会补、不会插值；条形只是把原句里的数字按大小排开。"),
-      { t: "interactive", id: "auto-numbers", title: "数值扫描 · NUMBER SCAN", engine: "auto" },
-      ...numeric.map((s) => vblock(s, "包含实验数值的原文语句")),
-      ed("数值脱离上下文容易被误读，所以每一条数值下面都保留了它所在的完整原句与页码。"),
-    ],
-  });
-
-  /* ---- 04 图谱 ---- */
+  /* ---------------- 图谱厅（有图注才建） ---------------- */
   const plates = figures.filter((f) => thumbs.has(f.page)).slice(0, 4).map((f) => ({
     t: "figure", src: thumbs.get(f.page), page: f.page, caption: f.caption.slice(0, 220),
   }));
-  halls.push({
-    id: "plates", kind: "specimen", num: "04",
-    kicker: "EXHIBIT 04 · THE PLATES 图谱厅",
-    title: "插图、表格与它们的原文标注",
-    blocks: [
-      ed("图注是论文自己的话。图像由原 PDF 页面在本地渲染得到；点右上角标记可查看完整原页。"),
-      ...(plates.length ? plates : [ed("这篇 PDF 未检测到 Fig./Table 标注，或该页无法渲染缩略图，因此本厅不摆出推测性的插图。")]),
-      ...figures.slice(0, 2).map((f) => ({ t: "verbatim", text: f.caption.slice(0, 300), ev: addEv({ text: f.caption.slice(0, 300), page: f.page, section: "Figure caption" }, "原图注（逐字）") })),
-    ],
-  });
+  if (plates.length || figures.length) {
+    const num = String(dims.length + 1).padStart(2, "0");
+    halls.push({
+      id: "plates", kind: "specimen", num,
+      kicker: `EXHIBIT ${num} · THE PLATES 图谱厅`,
+      title: "插图、表格与它们的原文标注",
+      blocks: [
+        ed("图注是论文自己的话。图像由原 PDF 页面在本地渲染得到；点右上角标记可查看完整原页。"),
+        ...(plates.length ? plates : [ed("这篇 PDF 的插图页无法渲染缩略图，因此本厅不摆出推测性的图像。")]),
+        ...figures.slice(0, 2).map((f) => ({
+          t: "verbatim", text: f.caption.slice(0, 300),
+          ev: addEv({ text: f.caption.slice(0, 300), page: f.page, section: "Figure caption" }, "原图注（逐字）"),
+        })),
+      ],
+    });
+    plan.push({ num, id: "plates", title: "图谱厅", count: figures.length, form: "plates", pages: [] });
+  }
 
-  /* ---- 05 边界 ---- */
+  /* ---------------- 原文库 ---------------- */
+  const archNum = String(halls.length).padStart(2, "0");
   halls.push({
-    id: "horizon", kind: "horizon", num: "05",
-    kicker: "EXHIBIT 05 · THE HORIZON 边界厅",
-    title: "作者承认的难处",
-    blocks: [
-      ed("一间诚实的展厅要留出「做不到」的位置。以下句子含局限、失败或未来工作信号，由程序筛选后逐字呈现；若原文没有这类表述，宁可少摆几件。"),
-      ...(limits.length ? limits.map((s) => vblock(s, "含局限 / 展望信号的原文语句"))
-        : [ed("未在 PDF 文本层里检出明确的局限表述。本厅不代作者补写。")]),
-    ],
-  });
-
-  /* ---- 06 原文库 ---- */
-  halls.push({
-    id: "archive", kind: "archive", num: "06",
-    kicker: "EXHIBIT 06 · THE ARCHIVE 原文库",
+    id: "archive", kind: "archive", num: archNum,
+    kicker: `EXHIBIT ${archNum} · THE ARCHIVE 原文库`,
     title: "回到纸张本身",
     blocks: [
       ed("最后一间是原文库。每一页都能在这里打开；点开的页面会在证据抽屉里按原尺寸渲染，并尽可能把引文高亮出来。"),
       { t: "interactive", id: "auto-pagemap", title: "原文页图 · PAGE MAP", engine: "auto" },
-      refsInline.length
-        ? { t: "refwall" }
-        : ed("未在文本层检出按 [n] 编号的参考文献条目。"),
+      refsInline.length ? { t: "refwall" } : ed("未在文本层检出按 [n] 编号的参考文献条目。"),
     ],
   });
+  plan.push({ num: archNum, id: "archive", title: "原文库", count: refsInline.length, form: "archive", pages: [] });
+
+  const meta = {
+    id: "auto", title: ex.title, pdf: ex.url, pages: ex.pageCount,
+    sourceName, generatedAt: date,
+    mode: "extractive",                       // 保持与 1.0 渲染器兼容
+    curation: "dimension-driven/v2",
+    curationLabel: "AI 策展 · 六维度分析",
+    engine: "PaperWorld 2.0 本地六维度分析 + 提取式策展",
+    refsInline,
+    analysis: {
+      generatedBy: A.generatedBy, coverage: A.coverage,
+      dimensions: analysisMeta,
+    },
+    plan,
+    colophon: `本展由 PaperWorld 在本地浏览器中依据《${sourceName}》自动生成：先按六个研究维度分析原文语句，再据此规划 ${halls.length} 间展区。全部原文语句逐字取自 PDF 文本层并标注页码；策展语为编辑性文字，已单独标注。论文不上传服务器。`,
+  };
 
   return {
     schema: "paperworld.blueprint/v1",
-    generatedBy: "PaperWorld local extractive curation (verbatim PDF text, no generative rewriting)",
+    generatedBy: "PaperWorld 2.0 dimension-driven extractive curation (verbatim PDF text)",
     meta, evidence, halls,
-    // 供通用互动装置使用的原始数据（不入库，仅本次会话）
     __raw: { sections, numbers: (ex.numbers || []).slice(0, 60), pageCount: ex.pageCount },
   };
+}
+
+/* 把通过校验的模型策展结果写进已生成的蓝图：只加「AI 策展语」块 + 重排原文展品。
+ * 模型永远不能新增 evidence，也不能改动任何 quote 文本。 */
+export function applyPlan(bp, result) {
+  if (!result?.applied || !Array.isArray(result.patches)) return bp;
+  for (const p of result.patches) {
+    const hall = bp.halls.find((h) => h.id === "dim-" + p.id);
+    if (!hall) continue;
+    const allVerbatim = hall.blocks.filter((b) => b.t === "verbatim");
+    const vb = new Map(allVerbatim.map((b) => [b.ev, b]));
+    // 模型没挑展品时保留本地全量原文，只补上它的讲解
+    const picked = (p.quoteIds || []).length
+      ? (p.quoteIds || []).map((id) => vb.get(id)).filter(Boolean)
+      : allVerbatim;
+    if (!picked.length) continue;
+    const head = hall.blocks.filter((b) => ["dimension", "editorial"].includes(b.t));
+    const tail = hall.blocks.filter((b) => !["dimension", "editorial", "verbatim", "exhibit"].includes(b.t));
+    head.push({ t: "exhibit", title: "AI 策展语 · 模型生成 · 非原文", text: p.note });
+    hall.blocks = [...head, ...picked, ...tail];
+  }
+  bp.meta.llm = { applied: true, message: result.message };
+  return bp;
 }
