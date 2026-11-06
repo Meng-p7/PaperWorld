@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Core · PaperWorld 策展引擎</title>
+<meta name="description" content="配置 PaperWorld 的 AI 策展引擎：接入模型服务商、加密保存 API Key、测试连接、管理策展任务。密钥不进浏览器。">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/exhibition.css">
+<link rel="stylesheet" href="css/studio.css">
+<link rel="stylesheet" href="css/cosmos.css">
+<link rel="stylesheet" href="css/core.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23040711'/><path d='M8 22V10l8 7 8-7v12' stroke='%238ce8ff' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+</head>
+<body class="cosmos-page core-page">
+
+<canvas id="sky" class="cosmos__layer" aria-hidden="true"></canvas>
+<canvas id="particles" class="cosmos__layer cosmos__particles" aria-hidden="true"></canvas>
+<div class="cosmos__vignette" aria-hidden="true"></div>
+
+<header class="cosmos-topbar">
+  <a class="brand" href="index.html"><b>PaperWorld</b><span class="brand__sub">AI CORE / 策展引擎</span></a>
+  <nav class="cosmos-nav">
+    <a href="index.html">宇宙入口</a>
+    <a href="station.html">空间站</a>
+    <a href="story.html">科研故事</a>
+    <a href="parse.html">上传论文</a>
+    <a href="core.html" class="is-active">AI Core</a>
+  </nav>
+</header>
+
+<main class="core-wrap">
+  <section class="core-hero">
+    <div class="cosmos-kicker">AI CORE · CURATION ENGINE</div>
+    <h1 class="core-hero__title">让模型负责<em>理解论文</em><br>让展馆负责让人看懂</h1>
+    <p class="core-hero__sub">
+      PaperWorld 不是问答机器人。你接入的模型只做一件事：读懂这篇论文，规划展区、写讲解、挑原文，
+      然后退出——展馆生成后正常浏览不再消耗任何模型 Token。密钥在你的 AI Core 后端加密保存，浏览器碰不到。
+    </p>
+  </section>
+
+  <div class="core-grid">
+    <!-- 1. 后端连接 -->
+    <section class="core-card" id="card-link">
+      <div class="core-card__h">
+        <span class="core-card__n">01</span>
+        <h2>后端连接</h2>
+        <span class="core-pill" id="link-state">未探测</span>
+      </div>
+      <p class="core-card__d">前后端分离：浏览器只与你的 AI Core 后端通信，模型密钥由后端加密保存。</p>
+      <div class="core-row">
+        <label>后端地址<input id="in-backend" type="url" placeholder="http://localhost:8080" autocomplete="off"></label>
+        <label>访问令牌 <span class="core-dim">PW_TOKEN（后端未设置则留空）</span><input id="in-token" type="password" placeholder="留空表示后端未开启鉴权" autocomplete="off"></label>
+      </div>
+      <div class="core-btns">
+        <button class="cbtn cbtn--sm" id="btn-probe">探测后端</button>
+        <button class="cbtn cbtn--ghost cbtn--sm" id="btn-save-link">保存连接</button>
+      </div>
+    </section>
+
+    <!-- 2. 模型配置 -->
+    <section class="core-card" id="card-model">
+      <div class="core-card__h">
+        <span class="core-card__n">02</span>
+        <h2>模型配置</h2>
+        <span class="core-pill" id="key-state">未配置</span>
+      </div>
+      <p class="core-card__d">
+        选择服务商或填自定义兼容端点（OpenAI 兼容 <span class="mono">/chat/completions</span>；也支持 Anthropic）。
+        API Key 只在保存时发给后端做 AES-256-GCM 加密，<strong>不写入浏览器</strong>。
+      </p>
+      <div class="core-providers" id="providers"></div>
+      <div class="core-row">
+        <label>模型接口地址<input id="in-baseurl" type="url" placeholder="https://api.example.com/v1/chat/completions" autocomplete="off"></label>
+        <label>模型名称<input id="in-model" type="text" placeholder="gpt-4o-mini / deepseek-chat / glm-4-flash" autocomplete="off"></label>
+      </div>
+      <div class="core-row">
+        <label>API Key <span class="core-dim">保存后浏览器不保留</span><input id="in-key" type="password" placeholder="sk-…" autocomplete="off"></label>
+      </div>
+      <div class="core-btns">
+        <button class="cbtn cbtn--primary cbtn--sm" id="btn-test">测试连接</button>
+        <button class="cbtn cbtn--sm" id="btn-save-model">保存配置</button>
+        <button class="cbtn cbtn--ghost cbtn--sm" id="btn-clear-model">清除</button>
+        <span class="core-out" id="model-out"></span>
+      </div>
+    </section>
+
+    <!-- 3. 任务 -->
+    <section class="core-card" id="card-task">
+      <div class="core-card__h">
+        <span class="core-card__n">03</span>
+        <h2>策展任务</h2>
+        <span class="core-pill" id="task-state">空闲</span>
+      </div>
+      <p class="core-card__d">
+        生成展馆是长任务：提交后返回任务号，前端轮询进度。结果写入展馆蓝图，之后浏览不再调用模型。
+      </p>
+      <div class="core-tasks" id="tasks"><div class="core-task core-dim">还没有策展任务。在「上传论文」里点生成即可。</div></div>
+    </section>
+
+    <!-- 4. 说明 -->
+    <section class="core-card core-card--wide" id="card-help">
+      <div class="core-card__h">
+        <span class="core-card__n">04</span>
+        <h2>安全与降级</h2>
+      </div>
+      <ul class="core-list">
+        <li><b>密钥不进浏览器</b>：保存后仅存后端 AES-256-GCM 密文，接口与日志都不回显。</li>
+        <li><b>后端访问令牌</b>：生产环境请设置 <span class="mono">PW_TOKEN</span>，否则任何能访问到端口的人都能用你的模型额度。</li>
+        <li><b>模型输出强校验</b>：引文 id 必须存在于证据表，讲解里出现新数值即丢弃，不合规自动降级到本地六维度分析。</li>
+        <li><b>没有后端也能用</b>：未配置时自动走本地提取式策展（真实、可溯源、不编造），只是叙事更朴素。</li>
+        <li><b>启动后端</b>：<span class="mono">node server/index.js</span>，同时托管静态前端，本地一条命令跑通。</li>
+      </ul>
+    </section>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="page">
+    <div class="row between wrap" style="align-items:flex-start">
+      <div style="max-width:58ch">
+        <div class="tag" style="margin-bottom:10px">AI CORE</div>
+        <p style="margin:0;line-height:1.9">
+          配置与密钥只存在你自己的后端；换前端托管不动后端，换后端不动前端。
+          完整接口与部署方式见 <span class="mono">server/README.md</span>。
+        </p>
+      </div>
+      <div class="mono micro dimmer" style="text-align:right;line-height:2">
+        PAPERWORLD · AI CORE<br>KEYS STAY SERVER-SIDE<br>NO TOKEN AFTER CURATION
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script type="module" src="js/core.js"></script>
+</body>
+</html>

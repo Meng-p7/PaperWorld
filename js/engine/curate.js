@@ -200,3 +200,54 @@ export function applyPlan(bp, result) {
   bp.meta.llm = { applied: true, message: result.message };
   return bp;
 }
+
+/* AI Core 后端策展结果：写入科研故事蓝图 + 展区讲解。
+ * 引文 id 必须已在 evidence 表里（服务端已校验，这里再验一次）；讲解一律标为非原文。 */
+export function applyAIPlan(bp, result) {
+  if (!result) return bp;
+  const allowed = new Set(Object.keys(bp.evidence || {}));
+  const acts = [];
+  const seen = new Set();
+  const order = ["why", "idea", "how", "result", "meaning"];
+  const list = Array.isArray(result.acts) ? result.acts : [];
+  for (const id of order) {
+    const a = list.find((x) => x && x.id === id && !seen.has(id));
+    if (!a) continue;
+    seen.add(id);
+    const quotes = (Array.isArray(a.quoteIds) ? a.quoteIds : []).filter((x) => allowed.has(x)).slice(0, 4);
+    acts.push({
+      id, n: `ACT 0${order.indexOf(id) + 1}`,
+      title: String(a.title || id).slice(0, 40),
+      tagline: String(a.title || id).slice(0, 40),
+      plain: String(a.plain || "").slice(0, 220),
+      tech: String(a.tech || "").slice(0, 320),
+      quotes,
+      figure: null,
+      stat: a.stat?.value ? { value: String(a.stat.value).slice(0, 24), label: String(a.stat.label || "").slice(0, 40), ev: quotes[0] } : null,
+      form: "hero",
+    });
+  }
+  if (acts.length) {
+    bp.story = {
+      acts,
+      meta: {
+        source: "ai-core",
+        note: `科研故事由 AI Core 后端的模型生成（共 ${acts.reduce((n, a) => n + a.quotes.length, 0)} 条原文引用，均已回查证据表）；讲解文字标为「非原文」。`,
+      },
+    };
+  }
+
+  for (const z of Array.isArray(result.zones) ? result.zones : []) {
+    const hall = bp.halls.find((h) => h.id === "dim-" + z.id);
+    if (!hall) continue;
+    const note = String(z.note || "").trim();
+    if (!note || note.length > 220) continue;
+    if (z.title && String(z.title).length <= 24) hall.title = String(z.title).trim();
+    if (!hall.blocks.some((b) => b.t === "exhibit" && /AI 策展语/.test(b.title || ""))) {
+      const at = Math.min(1, hall.blocks.length);
+      hall.blocks.splice(at, 0, { t: "exhibit", title: "AI 策展语 · 模型生成 · 非原文", text: note });
+    }
+  }
+  bp.meta.llm = { applied: true, message: result.message || "AI Core 后端策展完成" };
+  return bp;
+}

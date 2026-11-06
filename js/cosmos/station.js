@@ -5,6 +5,7 @@
 import { el, $, initMobileNav } from "../core/ui.js";
 import { loadExhibition } from "../core/store.js";
 import { createStarfield } from "./starfield.js";
+import { createStation3D } from "./station3d.js";
 
 const qs = new URLSearchParams(location.search);
 const exhibitId = qs.get("e");
@@ -92,17 +93,51 @@ function dock(id, node) {
   if (docking) return;
   docking = true;
   const station = $("#station");
+  const go = () => { location.href = `hall.html${suffix}#${id}`; };
   if (!reduce && !mobile) {
     station.classList.add("is-docking");
-    node.classList.add("is-focus");
+    if (node?.classList) node.classList.add("is-focus");
     const corridor = $("#corridor");
-    corridor.style.transform = "translate3d(0, 26px, 300px) scale(1.18)";
-    setTimeout(() => $("#flash").classList.add("is-on"), 480);
-    setTimeout(() => { location.href = `hall.html${suffix}#${id}`; }, 760);
+    if (corridor && getComputedStyle(corridor).display !== "none") {
+      corridor.style.transform = "translate3d(0, 26px, 300px) scale(1.18)";
+    }
+    setTimeout(() => $("#flash").classList.add("is-on"), 380);
+    setTimeout(go, 720);
   } else {
     $("#flash").classList.add("is-on");
-    setTimeout(() => { location.href = `hall.html${suffix}#${id}`; }, reduce ? 0 : 180);
+    setTimeout(go, reduce ? 0 : 180);
   }
+}
+
+/* ---------- 第一人称空间站（WebGL），失败则回落到 CSS 走廊 ---------- */
+function mountStation3D(halls) {
+  const canvas = $("#station-canvas");
+  if (!canvas) return null;
+  const doors = halls.map((h, i) => ({
+    num: `ZONE ${h.num || String(i).padStart(2, "0")}`,
+    title: (h.title || "").slice(0, 18),
+    theta: (i / halls.length) * Math.PI * 2,
+    id: h.id, kind: h.kind,
+  }));
+  try {
+    const s3 = createStation3D({
+      canvas, doors,
+      onSelect: (d) => {
+        const target = d.id;
+        if (d.kind === "facade") { location.href = "story.html" + suffix; return; }
+        dock(target, null);
+      },
+    });
+    if (s3) {
+      $("#map").style.display = "none";
+      $("#station3d").classList.add("is-live");
+      return s3;
+    }
+  } catch (err) {
+    console.warn("[station3d] 降级到 CSS 走廊：", err.message);
+  }
+  $("#station3d").style.display = "none";
+  return null;
 }
 
 /* ---------- 轻度视差 ---------- */
@@ -136,6 +171,10 @@ initMobileNav();
       el("div", { class: "zone__x", text: "可能是换了浏览器或清过站点数据。" }),
       el("div", { class: "zone__f" }, el("a", { class: "zone__enter", href: "parse.html", text: "去上传论文 →" }))));
   } else buildMap(bp);
+  if (bp) {
+    const halls = (bp.halls || []).filter(Boolean);
+    if (halls.length) mountStation3D(halls);
+  }
   const start = performance.now();
   setTimeout(() => $("#loader").classList.add("is-done"), Math.max(0, 420 - (performance.now() - start)));
 })();

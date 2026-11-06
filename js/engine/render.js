@@ -3,7 +3,7 @@
  * 区别只在 blueprint 数据；渲染逻辑不写死任何一篇论文。
  */
 import { el, $, $$, initTheme, initTopbar, initReveal, initMobileNav } from "../core/ui.js";
-import { renderPage } from "../core/pdfview.js";
+import { initDrawer, openEvidence, openPage, evChip, withEv } from "../core/drawer.js";
 import { mountInteractive } from "../interactives.js";
 import { mountGeneric } from "./generic.js";
 import { loadExhibition } from "../core/store.js";
@@ -56,24 +56,6 @@ function enhanceBuiltin(bp) {
       });
     }
   }
-}
-
-/* ---------------- 证据标记 ---------------- */
-function evChip(id) {
-  const e = BP.evidence[id];
-  if (!e) return el("span", { class: "ev ev--unverified", text: "?", title: "证据缺失" });
-  return el("button", {
-    class: "ev",
-    text: `P.${e.page}`,
-    title: e.claim,
-    onclick: (ev) => { ev.stopPropagation(); openEvidence(id); },
-  });
-}
-function withEv(node, ids) {
-  if (!ids) return node;
-  const list = Array.isArray(ids) ? ids : [ids];
-  for (const id of list) node.append(" ", evChip(id));
-  return node;
 }
 
 /* ---------------- 块渲染 ---------------- */
@@ -198,7 +180,7 @@ function renderFacade(h) {
   const fromPlate = h.figure && {
     src: h.figure.src,
     label: "SPECIMEN 00 · 论文首页（本地渲染）",
-    meta: `PAGE 1 / ${BP.meta.pages || "?"} · ${paperLabel()}`,
+    meta: `PAGE 1 / ${BP.meta.pages || "?"} · ${BP.meta.paperLabel || BP.meta.sourceName || "原 PDF"}`,
   };
   const hero = BP.meta.hero || fromPlate;
   if (hero) {
@@ -242,65 +224,6 @@ function renderHall(h) {
   for (const b of h.blocks || []) sec.append(blockRender(b));
   return sec;
 }
-
-/* ---------------- 证据抽屉 ---------------- */
-const drawer = $("#drawer");
-const drawerBody = $("#drawer-body");
-const drawerTitle = $("#drawer-title");
-const scrim = $("#scrim");
-function closeDrawer() {
-  drawer.classList.remove("is-open");
-  scrim.classList.remove("is-open");
-}
-function paperLabel() {
-  return BP.meta.paperLabel || BP.meta.sourceName || "原 PDF";
-}
-function openEvidence(id) {
-  const e = BP.evidence[id];
-  if (!e) return;
-  drawerTitle.textContent = `证据 · P.${e.page}`;
-  drawerBody.textContent = "";
-  drawerBody.append(
-    el("div", { class: "row center between wrap" },
-      el("span", { class: "tag", text: e.origin === "extractive" ? "原文直引 · 逐字摘录" : "VERIFIED · 已逐字核对", style: "color:var(--verify)" }),
-      el("span", { class: "mono micro dimmer", text: `#${id}` })),
-    el("div", { class: "tag", text: e.section || "—" }),
-    el("div", { class: "quote" }, e.quote),
-    el("dl", { class: "meta-grid" },
-      el("dt", { text: "页码" }), el("dd", { class: "mono", text: `第 ${e.page} 页` }),
-      el("dt", { text: "支撑论断" }), el("dd", { text: e.claim }),
-      el("dt", { text: "核对方式" }), el("dd", { text: e.origin === "extractive"
-        ? "句子直接取自 PDF 文本层，未经改写" : `逐字比对 ${paperLabel()} PDF 文本` })));
-  if (e.note) drawerBody.append(el("p", { class: "block note", style: "margin:0", text: e.note }));
-  drawerBody.append(el("button", {
-    class: "btn btn--sm", text: "在原文页中高亮此引文",
-    onclick: () => openPage(e.page, e.quote),
-  }));
-  drawer.classList.add("is-open");
-  scrim.classList.add("is-open");
-}
-function openPage(page, quote) {
-  drawerTitle.textContent = `原文 · 第 ${page} 页`;
-  drawerBody.textContent = "";
-  const stage = el("div", { class: "pdfview" });
-  const total = BP.meta.pages || 18;
-  const bar = el("div", { class: "pdfview__bar" },
-    el("span", { text: `PAGE ${page} / ${total}` }),
-    el("span", { text: quote ? "高亮 = 引文" : paperLabel() }));
-  const holder = el("div", { style: "padding:10px;background:#fff;min-height:80px" });
-  stage.append(bar, holder);
-  drawerBody.append(stage);
-  if (quote) drawerBody.append(el("div", { class: "quote" }, quote));
-  drawerBody.append(el("button", { class: "btn btn--ghost btn--sm", text: "返回", onclick: closeDrawer }));
-  drawer.classList.add("is-open");
-  scrim.classList.add("is-open");
-  if (!BP.meta.pdf) { holder.textContent = "本机未找到这份 PDF，无法渲染原页。"; return; }
-  renderPage(holder, BP.meta.pdf, page, { highlight: quote || null, maxWidth: 420 })
-    .then(({ hits }) => { bar.lastChild.textContent = hits ? `高亮 ${hits} 处` : "已渲染（未定位到引文）"; })
-    .catch((err) => { holder.textContent = "PDF 渲染失败：" + err.message; });
-}
-scrim.addEventListener("click", closeDrawer);
-addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
 
 /* ---------------- 导览轨 + 进度 ---------------- */
 function buildRail() {
@@ -386,6 +309,12 @@ async function boot() {
     return;
   }
   BP = result.blueprint;
+  initDrawer({
+    evidence: BP.evidence || {},
+    pdf: BP.meta.pdf,
+    paperLabel: BP.meta.paperLabel || BP.meta.sourceName || "原 PDF",
+    pages: BP.meta.pages || 18,
+  });
   document.title = `PaperWorld · ${BP.meta.title || BP.halls[0].title}`.slice(0, 110);
 
   if (BP.meta.mode === "extractive") {
@@ -405,7 +334,7 @@ async function boot() {
   const col = $(".footer .colophon-text");
   if (col && BP.meta.colophon) col.textContent = BP.meta.colophon;
   const stamp = $(".footer .colophon-stamp");
-  if (stamp) stamp.innerHTML = `PAPERWORLD · ${BP.meta.mode === "extractive" ? "AUTO EXHIBITION" : "EXHIBITION 00"}<br>${paperLabel()} · ${Object.keys(BP.evidence).length} EVIDENCE · ${BP.halls.length} HALLS`;
+  if (stamp) stamp.innerHTML = `PAPERWORLD · ${BP.meta.mode === "extractive" ? "AUTO EXHIBITION" : "EXHIBITION 00"}<br>${BP.meta.paperLabel || BP.meta.sourceName || "原 PDF"} · ${Object.keys(BP.evidence).length} EVIDENCE · ${BP.halls.length} HALLS`;
 
   buildRail();
   buildProgress();

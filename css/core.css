@@ -1,0 +1,102 @@
+/* PaperWorld · AI Core 配置页（与空间站同一套深空视觉语言） */
+.core-wrap { position: relative; z-index: 2; padding: 116px 0 var(--space-8); }
+.core-hero { width: min(1100px, 100% - 8vw); margin: 0 auto var(--space-6); }
+.core-hero__title {
+  font-family: var(--font-display); font-size: clamp(30px, 4.4vw, 58px);
+  line-height: 1.1; letter-spacing: -.028em; margin: 16px 0 0; max-width: 22ch;
+}
+.core-hero__title em { font-style: normal; color: var(--holo); }
+.core-hero__sub { max-width: 72ch; margin: 18px 0 0; font-size: 15px; line-height: 1.9; color: var(--cos-ink-2); }
+
+.core-grid {
+  width: min(1100px, 100% - 8vw); margin: 0 auto;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;
+}
+.core-card {
+  border: 1px solid rgba(140, 232, 255, .18); border-radius: 5px;
+  background: linear-gradient(155deg, rgba(13, 24, 54, .82), rgba(7, 11, 28, .72));
+  backdrop-filter: blur(10px); padding: 22px 24px;
+}
+.core-card--wide { grid-column: 1 / -1; }
+.core-card__h { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.core-card__n { font-family: var(--font-mono); font-size: 11px; letter-spacing: .22em; color: var(--holo); }
+.core-card__h h2 { font-family: var(--font-display); font-size: 22px; color: var(--cos-ink); margin: 0; flex: 1; min-width: 160px; }
+.core-card__d { font-size: 12.5px; line-height: 1.85; color: var(--cos-ink-2); margin: 12px 0 16px; }
+.core-dim { color: var(--cos-ink-3); font-size: 11px; letter-spacing: .04em; }
+
+.core-pill {
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 999px; border: 1px solid var(--holo-line); color: var(--holo);
+}
+.core-pill.is-ok { color: #7ef0b4; border-color: rgba(126, 240, 180, .45); }
+.core-pill.is-bad { color: var(--flag); border-color: rgba(255, 129, 114, .45); }
+.core-pill.is-warn { color: var(--cos-gold); border-color: rgba(242, 180, 92, .45); }
+
+.core-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.core-row label {
+  display: flex; flex-direction: column; gap: 7px;
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--cos-ink-3);
+}
+.core-row input {
+  background: rgba(4, 8, 20, .6); border: 1px solid rgba(140, 232, 255, .2);
+  border-radius: 5px; padding: 11px 13px; color: var(--cos-ink);
+  font-family: var(--font-mono); font-size: 13px; letter-spacing: .01em;
+}
+.core-row input:focus { outline: none; border-color: var(--holo); box-shadow: 0 0 0 3px rgba(140, 232, 255, .12); }
+
+.core-providers { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+.core-provider {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: .12em;
+  padding: 7px 13px; border-radius: 999px; cursor: pointer;
+  border: 1px solid rgba(140, 232, 255, .2); background: none; color: var(--cos-ink-2);
+  transition: color .2s, background .2s, border-color .2s;
+}
+.core-provider:hover { color: var(--cos-ink); border-color: var(--holo-line); }
+.core-provider.is-on { color: #04101e; background: var(--holo); border-color: var(--holo); }
+
+.core-btns { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+.core-out { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; color: var(--cos-ink-2); }
+.core-out.is-ok { color: #7ef0b4; }
+.core-out.is-bad { color: var(--flag); }
+
+.core-tasks { display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; }
+.core-task {
+  border: 1px solid rgba(140, 232, 255, .14); border-radius: 4px;
+  padding: 11px 13px; font-family: var(--font-mono); font-size: 11px; line-height: 1.8;
+  color: var(--cos-ink-2); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+}
+.core-task b { color: var(--holo); font-weight: 500; }
+.core-task.is-done b { color: #7ef0b4; }
+.core-task.is-error b { color: var(--flag); }
+
+.core-list { margin: 0; padding-left: 20px; color: var(--cos-ink-2); font-size: 13px; line-height: 2; }
+.core-list b { color: var(--cos-ink); font-weight: 600; }
+.core-list .mono { color: var(--holo); }
+
+@media (max-width: 860px) {
+  .core-grid { grid-template-columns: 1fr; }
+  .core-wrap { padding-top: 92px; }
+}
+
+/* parse 页的 AI Core 状态条 */
+.core-strip {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-top: var(--space-5); padding: 13px 18px;
+  border: 1px solid var(--line); border-left: 2px solid var(--ink-3);
+  border-radius: 0 var(--r-md) var(--r-md) 0; background: var(--surface);
+  font-size: 13px; color: var(--ink-2);
+}
+.core-strip.is-ok { border-left-color: var(--verify); }
+.core-strip.is-bad { border-left-color: var(--flag); }
+.core-strip__d {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); flex: none;
+  box-shadow: 0 0 0 3px rgba(120, 130, 150, .16);
+}
+.core-strip.is-ok .core-strip__d { background: var(--verify); box-shadow: 0 0 0 3px var(--verify-soft); }
+.core-strip.is-bad .core-strip__d { background: var(--flag); box-shadow: 0 0 0 3px var(--flag-soft); }
+.core-strip__go {
+  margin-left: auto; font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em;
+  color: var(--cyan); text-decoration: none; white-space: nowrap;
+}
+.core-strip__go:hover { text-decoration: underline; }

@@ -298,6 +298,63 @@
 }
 .station__legend b { color: var(--holo); font-weight: 500; }
 
+/* ---------- 第一人称空间站（WebGL） ---------- */
+.station-canvas-wrap {
+  position: relative; width: min(1240px, 100% - 8vw); margin: 18px auto 0;
+  height: min(66vh, 620px); border: 1px solid rgba(140, 232, 255, .18);
+  border-radius: 6px; overflow: hidden; background: #04070f;
+  box-shadow: 0 30px 90px rgba(2, 5, 18, .6), inset 0 0 0 1px rgba(255, 255, 255, .03);
+}
+.station-canvas-wrap:not(.is-live) { display: none; }
+#station-canvas {
+  display: block; width: 100%; height: 100%; cursor: grab; touch-action: none;
+}
+#station-canvas.is-grab { cursor: grabbing; }
+
+.station-plates { position: absolute; inset: 0; pointer-events: none; }
+.station-plate {
+  position: absolute; left: 0; top: 0; transform: translate(-50%, -50%);
+  display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  padding: 7px 13px; border-radius: 3px; cursor: pointer; pointer-events: none;
+  border: 1px solid rgba(140, 232, 255, .28);
+  background: rgba(6, 12, 26, .78); backdrop-filter: blur(6px);
+  color: var(--cos-ink); opacity: 0; transition: opacity .18s, border-color .18s, background .18s;
+}
+.station-plate i {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--holo); flex: none;
+  box-shadow: 0 0 8px var(--holo);
+}
+.station-plate b {
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .18em;
+  color: var(--holo); font-weight: 500;
+}
+.station-plate span {
+  font-family: var(--font-display); font-size: 14px; letter-spacing: .01em; color: var(--cos-ink);
+}
+.station-plate:hover, .station-plate.is-on {
+  border-color: var(--holo); background: rgba(14, 30, 58, .92);
+}
+.station-plate.is-on { box-shadow: 0 0 0 1px rgba(140, 232, 255, .35), 0 0 30px rgba(100, 190, 255, .3); }
+
+.station-hint {
+  position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+  padding: 8px 16px; border-radius: 999px;
+  border: 1px solid rgba(140, 232, 255, .18); background: rgba(4, 8, 18, .72);
+  backdrop-filter: blur(8px);
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--cos-ink-3); white-space: nowrap;
+}
+.station-hint b { color: var(--holo); font-weight: 500; }
+.station-hint--m { display: none; }
+@media (max-width: 760px) {
+  .station-canvas-wrap { height: 56vh; width: calc(100% - 32px); }
+  .station-hint { display: none; }
+  .station-hint--m { display: block; font-size: 9px; letter-spacing: .08em; }
+  .station-plate { padding: 5px 9px; }
+  .station-plate span { font-size: 11px; }
+  .station-plate b { font-size: 8px; letter-spacing: .12em; }
+}
+
 /* ---------- 展馆层：全息导航 ---------- */
 body.hall-page { background: var(--bg); }
 .holo-nav {

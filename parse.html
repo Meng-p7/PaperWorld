@@ -72,6 +72,12 @@
     <input type="file" id="file" accept="application/pdf,.pdf">
   </section>
 
+  <div class="core-strip" id="core-strip">
+    <span class="core-strip__d"></span>
+    <span id="core-strip-text">AI Core 未配置：将使用本地六维度分析完成提取式策展。</span>
+    <a class="core-strip__go" href="core.html">配置 AI Core →</a>
+  </div>
+
   <section class="pipeline is-hidden" id="pipeline" aria-live="polite">
     <div class="pipeline__head">
       <span class="tag">CURATION PIPELINE · 策展流水线</span>
@@ -88,6 +94,7 @@
     <div class="result__stats" id="result-stats"></div>
     <div class="row wrap" style="gap:10px">
       <a class="btn" id="enter" href="#">进入空间展馆 →</a>
+      <a class="btn btn--ghost" id="enter-story" href="#">讲成科研故事</a>
       <a class="btn btn--ghost" id="enter-read" href="#">直接阅读（跳过动画）</a>
       <button class="btn btn--ghost" id="again">再传一篇</button>
     </div>

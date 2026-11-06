@@ -1,0 +1,11 @@
+{
+  "name": "paperworld-ai-core",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PaperWorld AI Core 后端：API Key 加密存储、模型调用代理、策展任务队列。零 npm 依赖，Node 18+。",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node index.js"
+  }
+}

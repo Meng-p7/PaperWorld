@@ -4,8 +4,9 @@
 import { el, $, initTheme, initTopbar, initMobileNav } from "./core/ui.js";
 import { extractPdf } from "./engine/extract.js";
 import { analyze } from "./engine/analyze.js";
-import { curate, applyPlan } from "./engine/curate.js";
+import { curate, applyPlan, applyAIPlan } from "./engine/curate.js";
 import { enhancePlan, getLLMConfig, saveLLMConfig, clearLLMConfig, isLLMEnabled } from "./engine/llm.js";
+import { getCoreLink, submitCurate, waitTask } from "./engine/ai.js";
 import { saveExhibition, listExhibitions, deleteExhibition, makeId } from "./core/store.js";
 
 initTheme();
@@ -70,12 +71,13 @@ function fail(err) {
 }
 
 /* ---------- 策展解读面板 ---------- */
-function renderAnalysis(bp, llmResult) {
+function renderAnalysis(bp, curation) {
   const box = $("#analysis");
   if (!box) return;
   box.classList.remove("is-hidden");
-  $("#analysis-status").textContent = llmResult.message;
-  $("#analysis-status").style.color = llmResult.applied ? "var(--verify)" : "var(--ink-3)";
+  $("#analysis-status").textContent = curation.message || "";
+  $("#analysis-status").style.color = curation.source === "ai-core" ? "var(--verify)"
+    : curation.source === "local" ? "var(--gold)" : "var(--ink-3)";
 
   const grid = $("#analysis-grid");
   grid.textContent = "";
@@ -98,6 +100,57 @@ function renderAnalysis(bp, llmResult) {
   }
 }
 
+/* ---------- 策展：优先 AI Core 后端，其次本机直连，最后本地提取式 ---------- */
+function recordTask(t) {
+  try {
+    const list = JSON.parse(localStorage.getItem("pw.ai.tasks") || "[]");
+    const i = list.findIndex((x) => x.id === t.id);
+    const rec = { id: t.id, status: t.status, stage: t.stage, progress: t.progress, error: t.error, acts: t.result?.acts?.length, zones: t.result?.zones?.length };
+    if (i >= 0) list[i] = { ...list[i], ...rec }; else list.unshift(rec);
+    localStorage.setItem("pw.ai.tasks", JSON.stringify(list.slice(0, 12)));
+  } catch { /* 任务记录失败不影响生成 */ }
+}
+
+async function runCuration(bp) {
+  const link = getCoreLink();
+  if (link.backend) {
+    try {
+      const payload = {
+        title: bp.meta.title, pageCount: bp.meta.pages,
+        dimensions: (bp.meta.analysis?.dimensions || []).map((d) => ({ id: d.id, name: d.name, count: d.count })),
+        sentences: Object.entries(bp.evidence || {}).map(([id, e]) => ({ id, page: e.page, section: e.section, text: e.quote })),
+      };
+      setProgress(95, "提交 AI Core 策展任务…");
+      const { taskId } = await submitCurate(payload, link);
+      recordTask({ id: taskId, status: "running", stage: "已提交" });
+      const t = await waitTask(taskId, {
+        link,
+        onTick: (tk) => { setProgress(95 + (tk.progress || 0) * 3.5, tk.stage || "模型理解论文…"); recordTask(tk); },
+      });
+      recordTask(t);
+      if (t.status === "done" && t.result) {
+        return {
+          source: "ai-core",
+          result: { ...t.result, message: `AI Core 后端策展完成（${t.result.model || "模型"}）` },
+          message: `AI Core 模型策展：${t.result.acts?.length || 0} 幕科研故事、${t.result.zones?.length || 0} 个展区讲解，全部引文已回查证据表。`,
+        };
+      }
+      throw new Error(t.error || "策展任务失败");
+    } catch (e) {
+      // 后端不可用/未配密钥/任务失败 → 降级，不阻塞生成
+      console.warn("AI Core 策展降级：", e.message);
+    }
+  }
+  if (isLLMEnabled()) {
+    const r = await enhancePlan(bp);
+    return { source: "local", result: r, message: r.message || "本机模型已参与展区讲解" };
+  }
+  return {
+    source: "none", result: null,
+    message: "未配置 AI Core 与模型，使用本地六维度分析完成提取式策展（真实、可溯源、不编造）。",
+  };
+}
+
 async function run(blob, sourceName) {
   if (!blob || blob.size < 1024) { fail(new Error("文件看起来是空的。")); return; }
   if (blob.size > 60 * 1024 * 1024) { fail(new Error("文件超过 60MB，请先压缩或换一篇。")); return; }
@@ -113,9 +166,10 @@ async function run(blob, sourceName) {
     setProgress(92, `命中 ${hit} 个研究维度`);
     const bp = curate(ex, { sourceName, analysis: A });
 
-    setProgress(95, isLLMEnabled() ? "调用模型生成展区讲解…" : "按维度生成展区与展品…");
-    const llmResult = await enhancePlan(bp);
-    applyPlan(bp, llmResult);
+    setProgress(94, "准备策展任务…");
+    const curation = await runCuration(bp);
+    if (curation.source === "ai-core" && curation.result) applyAIPlan(bp, curation.result);
+    else if (curation.source === "local" && curation.result) applyPlan(bp, curation.result);
 
     setProgress(98, "写入本机展览库…");
     const id = makeId();
@@ -124,7 +178,8 @@ async function run(blob, sourceName) {
 
     $("#result-title").textContent = bp.meta.title;
     $("#result-note").textContent =
-      `已规划 ${bp.halls.length} 间展区、${Object.keys(bp.evidence).length} 条可溯源展签。展区结构由六维度分析决定，正文全部是 PDF 原文直引，编辑性文字与模型讲解单独标注。展览与论文都只存在这台设备上。`;
+      `已规划 ${bp.halls.length} 间展区、${Object.keys(bp.evidence).length} 条可溯源展签。` +
+      curation.message + " 正文全部是 PDF 原文直引，编辑性文字与模型讲解单独标注。";
     const stats = [
       ["页数", ex.pageCount], ["原文展签", Object.keys(bp.evidence).length],
       ["命中维度", hit], ["识别章节", (bp.__raw?.sections || []).length],
@@ -137,8 +192,9 @@ async function run(blob, sourceName) {
       el("div", { class: "result__l", text: l })));
 
     $("#enter").href = "station.html?e=" + encodeURIComponent(id);
+    $("#enter-story").href = "story.html?e=" + encodeURIComponent(id);
     $("#enter-read").href = "hall.html?e=" + encodeURIComponent(id);
-    renderAnalysis(bp, llmResult);
+    renderAnalysis(bp, curation);
     $result.classList.remove("is-hidden");
     renderGallery();
     $result.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -233,3 +289,28 @@ function renderGallery() {
   }
 }
 renderGallery();
+
+/* ---------- AI Core 状态提示 ---------- */
+(async () => {
+  const strip = $("#core-strip");
+  const text = $("#core-strip-text");
+  const link = getCoreLink();
+  if (!strip || !text) return;
+  if (!link.backend) {
+    text.textContent = "AI Core 未配置：将使用本地六维度分析完成提取式策展（真实、可溯源、不编造）。";
+    return;
+  }
+  text.textContent = "正在探测 AI Core 后端…";
+  try {
+    const res = await fetch(link.backend + "/health", { signal: AbortSignal.timeout(6000) });
+    const h = await res.json().catch(() => ({}));
+    if (!res.ok || !h.ok) throw new Error(h.error || "后端异常");
+    strip.classList.add("is-ok");
+    text.textContent = h.tokenRequired
+      ? `AI Core 已连接（${link.backend}）· 后端开启鉴权，需在 AI Core 页填入访问令牌。`
+      : `AI Core 已连接（${link.backend}）· 生成时将由模型负责故事与展区讲解。`;
+  } catch (e) {
+    strip.classList.add("is-bad");
+    text.textContent = `AI Core 后端不可达（${link.backend}）：${e.message}。将自动降级到本地提取式策展。`;
+  }
+})();
