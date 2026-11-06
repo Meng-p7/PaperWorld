@@ -1,0 +1,172 @@
+[
+ {
+  "id": "fig1-teaser",
+  "fig": 1,
+  "page": 1,
+  "file": "assets/figures/fig1-teaser.png",
+  "caption": "Fig. 1: ALOHA : A Low-cost Open-source Hardware System for Bimanual Teleoperation. The whole system costs <$20k with off-the-shelf robots and 3D printed components. Left: The user teleoperates by backdriving the leader robots, with the follower robots mirroring the motion. Right: ALOHA is capable of precise, contact-rich, and dynamic tasks. We show examples of both teleoperated and learned skills.",
+  "clip": [
+   42.7,
+   158,
+   570.6,
+   327.5
+  ],
+  "px": [
+   1584,
+   509
+  ]
+ },
+ {
+  "id": "fig3-hardware",
+  "fig": 3,
+  "page": 3,
+  "file": "assets/figures/fig3-hardware.png",
+  "caption": "Fig. 3: Left: Camera viewpoints of the front, top, and two wrist cameras, together with an illustration of the bimanual workspace of ALOHA. Middle: Detailed view of the “handle and scissor” mechanism and custom grippers. Right: Technical spec of the ViperX 6dof robot [1].",
+  "clip": [
+   42.6,
+   40,
+   570.6,
+   191.0
+  ],
+  "px": [
+   1585,
+   453
+  ]
+ },
+ {
+  "id": "fig4-act-arch",
+  "fig": 4,
+  "page": 4,
+  "file": "assets/figures/fig4-act-arch.png",
+  "caption": "Fig. 4: Architecture of Action Chunking with Transformers (ACT). We train ACT as a Conditional VAE (CVAE), which has an encoder and a decoder. Left: The encoder of the CVAE compresses action sequence and joint observation into z, the style variable. The encoder is discarded at test time. Right: The decoder or policy of ACT synthesizes images from multiple viewpoints, joint positions, and z with a transformer encoder, and predicts a sequence of actions with a transformer decoder. z is simply set to the mean of the prior (i.e. zero) at test time.",
+  "clip": [
+   43.0,
+   40,
+   569.2,
+   179.6
+  ],
+  "px": [
+   1580,
+   419
+  ]
+ },
+ {
+  "id": "fig5-chunking",
+  "fig": 5,
+  "page": 4,
+  "file": "assets/figures/fig5-chunking.png",
+  "caption": "Fig. 5: We employ both Action Chunking and Temporal Ensembling when applying actions, instead of interleaving observing and executing.",
+  "clip": [
+   42.6,
+   225.2,
+   306.0,
+   359.8
+  ],
+  "px": [
+   792,
+   405
+  ]
+ },
+ {
+  "id": "fig6-real-tasks",
+  "fig": 6,
+  "page": 7,
+  "file": "assets/figures/fig6-real-tasks.png",
+  "caption": "Fig. 6: Real-World Task Deﬁnitions. For each of the 6 real-world tasks, we illustrate the initializations and the subtasks.",
+  "clip": [
+   76.7,
+   40,
+   535.3,
+   730.7
+  ],
+  "px": [
+   1377,
+   2073
+  ]
+ },
+ {
+  "id": "fig7-sim-tasks",
+  "fig": 7,
+  "page": 8,
+  "file": "assets/figures/fig7-sim-tasks.png",
+  "caption": "Fig. 7: Simulated Task Deﬁnitions. For each of the 2 simulated tasks, we illustrate the initializations and the subtasks.",
+  "clip": [
+   80.4,
+   40,
+   531.6,
+   138.4
+  ],
+  "px": [
+   1354,
+   296
+  ]
+ },
+ {
+  "id": "fig8-ablations",
+  "fig": 8,
+  "page": 10,
+  "file": "assets/figures/fig8-ablations.png",
+  "caption": "Fig. 8: (a) We augment two baselines with action chunking, with different values of chunk size k on the x-axis, and success rate on the y-axis. Both methods signiﬁcantly beneﬁt from action chunking, suggesting that it is a generally useful technique. (b) Temporal Ensemble (TE) improves our method and BC-ConvMLP, while hurting VINN. (c) We compare with and without the CVAE training, showing that it is crucial when learning from human data. (d) We plot the distribution of task completion time in our user study, where we task participants to perform two tasks, at 5Hz or 50Hz teleoperation frequency. Lowering the frequency results in a 62% slowdown in completion time.",
+  "clip": [
+   42.7,
+   40,
+   569.0,
+   181.3
+  ],
+  "px": [
+   1581,
+   424
+  ]
+ },
+ {
+  "id": "fig9-teleop-gallery",
+  "fig": 9,
+  "page": 15,
+  "file": "assets/figures/fig9-teleop-gallery.png",
+  "caption": "Fig. 9: Teleoperation task examples with ALOHA. We include videos on the project website.",
+  "clip": [
+   127.3,
+   40,
+   484.7,
+   386.7
+  ],
+  "px": [
+   1074,
+   1041
+  ]
+ },
+ {
+  "id": "fig10-camera-views",
+  "fig": 10,
+  "page": 16,
+  "file": "assets/figures/fig10-camera-views.png",
+  "caption": "Fig. 10: Image observation examples for 5 real-world tasks. The 4 columns are [top camera, front camera, left wrist camera, right wrist camera] respectively. We rotate the front camera by 90 degree to capture more vertical space.",
+  "clip": [
+   43.0,
+   40,
+   569.0,
+   382.6
+  ],
+  "px": [
+   1580,
+   1028
+  ]
+ },
+ {
+  "id": "fig11-detail-arch",
+  "fig": 11,
+  "page": 17,
+  "file": "assets/figures/fig11-detail-arch.png",
+  "caption": "Fig. 11: Detail architecture of Action Chunking with Transformers (ACT).",
+  "clip": [
+   160.7,
+   40,
+   451.3,
+   633.0
+  ],
+  "px": [
+   872,
+   1779
+  ]
+ }
+]

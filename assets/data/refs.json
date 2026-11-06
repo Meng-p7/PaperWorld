@@ -1,0 +1,428 @@
+[
+ {
+  "num": 1,
+  "raw": "Viperx 300 robot arm 6dof. URL https://www. trossenrobotics.com/viperx-300-robot-arm-6dof.aspx.",
+  "year": null,
+  "url": "https://www."
+ },
+ {
+  "num": 2,
+  "raw": "Widowx 250 robot arm 6dof. URL https://www. trossenrobotics.com/widowx-250-robot-arm-6dof.aspx.",
+  "year": null,
+  "url": "https://www."
+ },
+ {
+  "num": 3,
+  "raw": "Highly dexterous manipulation system - capabilities - part 1, Nov 2014. URL https://www.youtube.com/watch?v= TearcKVj0iY.",
+  "year": 2014,
+  "url": "https://www.youtube.com/watch?v="
+ },
+ {
+  "num": 4,
+  "raw": "Assembly performance metrics and test methods, Apr 2022. URL https://www. nist.gov/el/intelligent-systems-division-73500/ robotic-grasping-and-manipulation-assembly/assembly.",
+  "year": 2022,
+  "url": "https://www."
+ },
+ {
+  "num": 5,
+  "raw": "Teleoperated robots - shadow teleoperation system, Nov 2022. URL https://www.shadowrobot.com/teleoperation/.",
+  "year": 2022,
+  "url": "https://www.shadowrobot.com/teleoperation/."
+ },
+ {
+  "num": 6,
+  "raw": "Sridhar Pandian Arunachalam, Irmak Güzey, Soumith Chintala, and Lerrel Pinto. Holo-dex: Teaching dex- terity with immersive mixed reality. arXiv preprint arXiv:2210.06463, 2022.",
+  "year": 2022,
+  "url": null
+ },
+ {
+  "num": 7,
+  "raw": "Anthony Brohan, Noah Brown, Justice Carbajal, Yev- gen Chebotar, Joseph Dabis, Chelsea Finn, Keerthana Gopalakrishnan, Karol Hausman, Alexander Herzog, Jasmine Hsu, Julian Ibarz, Brian Ichter, Alex Irpan, Tomas Jackson, Sally Jesmonth, Nikhil J. Joshi, Ryan C. Julian, Dmitry Kalashnikov, Yuheng Kuang, Isabel Leal, Kuang- Huei Lee, Sergey Levine, Yao Lu, Utsav Malla, Deek- sha Manjunath, Igor Mordatch, Oﬁr Nachum, Carolina Parada, Jodilyn Peralta, Emily Perez, Karl Pertsch, Jornell Quiambao, Kanishka Rao, Michael S. Ryoo, Grecia Salazar, Pannag R. Sanketi, Kevin Sayed, Jaspiar Singh, Sumedh Anand Sontakke, Austin Stone, Clayton Tan, Huong Tran, Vincent Vanhoucke, Steve Vega, Quan Ho Vuong, F. Xia, Ted Xiao, Peng Xu, Sichun Xu, Tianhe Yu, and Brianna Zitkovich. Rt-1: Robotics transformer for real-world control at scale. ArXiv, abs/2212.06817, 2022.",
+  "year": 2022,
+  "url": null
+ },
+ {
+  "num": 8,
+  "raw": "Nicolas Carion, Francisco Massa, Gabriel Synnaeve, Nico- las Usunier, Alexander Kirillov, and Sergey Zagoruyko. End-to-end object detection with transformers. ArXiv, abs/2005.12872, 2020.",
+  "year": 2020,
+  "url": null
+ },
+ {
+  "num": 9,
+  "raw": "Yuanpei Chen, Yaodong Yang, Tianhao Wu, Shengjie Wang, Xidong Feng, Jiechuan Jiang, Stephen McAleer, Hao Dong, Zongqing Lu, and Song-Chun Zhu. Towards human-level bimanual dexterous manipulation with rein- forcement learning. ArXiv, abs/2206.08686, 2022.",
+  "year": 2022,
+  "url": null
+ },
+ {
+  "num": 10,
+  "raw": "Rohan Chitnis, Shubham Tulsiani, Saurabh Gupta, and Abhinav Kumar Gupta. Efﬁcient bimanual manipulation using learned task schemas. 2020 IEEE International Conference on Robotics and Automation (ICRA), pages 1149–1155, 2019.",
+  "year": 2019,
+  "url": null
+ },
+ {
+  "num": 11,
+  "raw": "Sudeep Dasari and Abhinav Kumar Gupta. Transformers for one-shot visual imitation. In Conference on Robot Learning, 2020.",
+  "year": 2020,
+  "url": null
+ },
+ {
+  "num": 12,
+  "raw": "Pim de Haan, Dinesh Jayaraman, and Sergey Levine. Causal confusion in imitation learning. In Neural Information Processing Systems, 2019.",
+  "year": 2019,
+  "url": null
+ },
+ {
+  "num": 13,
+  "raw": "Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. Bert: Pre-training of deep bidirec- tional transformers for language understanding. ArXiv, abs/1810.04805, 2019.",
+  "year": 2019,
+  "url": null
+ },
+ {
+  "num": 14,
+  "raw": "Yan Duan, Marcin Andrychowicz, Bradly C. Stadie, Jonathan Ho, Jonas Schneider, Ilya Sutskever, P. Abbeel, and Wojciech Zaremba. One-shot imitation learning. ArXiv, abs/1703.07326, 2017.",
+  "year": 2017,
+  "url": null
+ },
+ {
+  "num": 15,
+  "raw": "Frederik Ebert, Yanlai Yang, Karl Schmeckpeper, Bernadette Bucher, Georgios Georgakis, Kostas Daniilidis, Chelsea Finn, and Sergey Levine. Bridge data: Boosting generalization of robotic skills with cross-domain datasets. ArXiv, abs/2109.13396, 2021.",
+  "year": 2021,
+  "url": null
+ },
+ {
+  "num": 16,
+  "raw": "Peter R. Florence, Lucas Manuelli, and Russ Tedrake. Self- supervised correspondence in visuomotor policy learning. IEEE Robotics and Automation Letters, 5:492–499, 2019.",
+  "year": 2019,
+  "url": null
+ },
+ {
+  "num": 17,
+  "raw": "Peter R. Florence, Corey Lynch, Andy Zeng, Oscar Ramirez, Ayzaan Wahid, Laura Downs, Adrian S. Wong, Johnny Lee, Igor Mordatch, and Jonathan Tompson. Implicit behavioral cloning. ArXiv, abs/2109.00137, 2021.",
+  "year": 2021,
+  "url": null
+ },
+ {
+  "num": 18,
+  "raw": "Aditya Ganapathi, Priya Sundaresan, Brijen Thananjeyan, Ashwin Balakrishna, Daniel Seita, Jennifer Grannen, Minho Hwang, Ryan Hoque, Joseph Gonzalez, Nawid Jamali, Katsu Yamane, Soshi Iba, and Ken Goldberg. Learning dense visual correspondences in simulation to smooth and fold real fabrics. 2021 IEEE International Conference on Robotics and Automation (ICRA), pages 11515–11522, 2020.",
+  "year": 2020,
+  "url": null
+ },
+ {
+  "num": 19,
+  "raw": "Jennifer Grannen, Priya Sundaresan, Brijen Thananjeyan, Jeffrey Ichnowski, Ashwin Balakrishna, Minho Hwang, Vainavi Viswanath, Michael Laskey, Joseph Gonzalez, and Ken Goldberg. Untangling dense knots by learning task-relevant keypoints. In Conference on Robot Learning, 2020.",
+  "year": 2020,
+  "url": null
+ },
+ {
+  "num": 20,
+  "raw": "Huy Ha and Shuran Song. Flingbot: The unreasonable effectiveness of dynamic manipulation for cloth unfolding. ArXiv, abs/2105.03655, 2021.",
+  "year": 2021,
+  "url": null
+ },
+ {
+  "num": 21,
+  "raw": "Ankur Handa, Karl Van Wyk, Wei Yang, Jacky Liang, Yu- Wei Chao, Qian Wan, Stan Birchﬁeld, Nathan D. Ratliff, and Dieter Fox. Dexpilot: Vision-based teleoperation of dexterous robotic hand-arm system. 2020 IEEE International Conference on Robotics and Automation (ICRA), pages 9164–9170, 2019.",
+  "year": 2019,
+  "url": null
+ },
+ {
+  "num": 22,
+  "raw": "Kaiming He, X. Zhang, Shaoqing Ren, and Jian Sun. Deep residual learning for image recognition. 2016 IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pages 770–778, 2015.",
+  "year": 2015,
+  "url": null
+ },
+ {
+  "num": 23,
+  "raw": "Irina Higgins, Loïc Matthey, Arka Pal, Christopher P. Burgess, Xavier Glorot, Matthew M. Botvinick, Shakir Mohamed, and Alexander Lerchner. beta-vae: Learning basic visual concepts with a constrained variational framework. In International Conference on Learning Representations, 2016.",
+  "year": 2016,
+  "url": null
+ },
+ {
+  "num": 24,
+  "raw": "Ryan Hoque, Ashwin Balakrishna, Ellen R. Novoseller, Albert Wilcox, Daniel S. Brown, and Ken Goldberg. Thriftydagger: Budget-aware novelty and risk gating for interactive imitation learning. In Conference on Robot Learning, 2021.",
+  "year": 2021,
+  "url": null
+ },
+ {
+  "num": 25,
+  "raw": "Stephen James, Michael Bloesch, and Andrew J. Davison. Task-embedded control networks for few-shot imitation learning. ArXiv, abs/1810.03237, 2018.",
+  "year": 2018,
+  "url": null
+ },
+ {
+  "num": 26,
+  "raw": "Eric Jang, Alex Irpan, Mohi Khansari, Daniel Kappler, Frederik Ebert, Corey Lynch, Sergey Levine, and Chelsea Finn. Bc-z: Zero-shot task generalization with robotic imitation learning. In Conference on Robot Learning, 2022.",
+  "year": 2022,
+  "url": null
+ },
+ {
+  "num": 27,
+  "raw": "R G Jenness and C D Wicker. Master–slave manipulators and remote maintenance at the oak ridge national labora- tory, Jan 1975. URL https://www.osti.gov/biblio/4179544.",
+  "year": 1975,
+  "url": "https://www.osti.gov/biblio/4179544."
+ },
+ {
+  "num": 28,
+  "raw": "Edward Johns. Coarse-to-ﬁne imitation learning: Robot manipulation from a single demonstration. 2021 IEEE International Conference on Robotics and Automation (ICRA), pages 4613–4619, 2021.",
+  "year": 2021,
+  "url": null
+ },
+ {
+  "num": 29,
+  "raw": "Liyiming Ke, Jingqiang Wang, Tapomayukh Bhattachar- jee, Byron Boots, and Siddhartha Srinivasa. Grasping with chopsticks: Combating covariate shift in model-free imitation learning for ﬁne manipulation. In International Conference on Robotics and Automation (ICRA), 2021.",
+  "year": 2021,
+  "url": null
+ },
+ {
+  "num": 30,
+  "raw": "Michael Kelly, Chelsea Sidrane, K. Driggs-Campbell, and Mykel J. Kochenderfer. Hg-dagger: Interactive imitation learning with human experts. 2019 International Conference on Robotics and Automation (ICRA), pages 8077–8083, 2018.",
+  "year": 2018,
+  "url": null
+ },
+ {
+  "num": 31,
+  "raw": "Heecheol Kim, Yoshiyuki Ohmura, and Yasuo Kuniyoshi. Gaze-based dual resolution deep imitation learning for high-precision dexterous robot manipulation. IEEE Robotics and Automation Letters, 6:1630–1637, 2021.",
+  "year": 2021,
+  "url": null
+ },
+ {
+  "num": 32,
+  "raw": "Heecheol Kim, Yoshiyuki Ohmura, and Yasuo Kuniyoshi. Robot peels banana with goal-conditioned dual-action deep imitation learning. ArXiv, abs/2203.09749, 2022.",
+  "year": 2022,
+  "url": null
+ },
+ {
+  "num": 33,
+  "raw": "Diederik P. Kingma and Max Welling. Auto-encoding variational bayes. CoRR, abs/1312.6114, 2013.",
+  "year": 2013,
+  "url": null
+ },
+ {
+  "num": 34,
+  "raw": "Oliver Kroemer, Christian Daniel, Gerhard Neumann, Herke van Hoof, and Jan Peters. Towards learning hierarchical skills for multi-phase manipulation tasks. 2015 IEEE International Conference on Robotics and Automation (ICRA), pages 1503–1510, 2015.",
+  "year": 2015,
+  "url": null
+ },
+ {
+  "num": 35,
+  "raw": "Lucy Lai, Ann Z Huang, and Samuel J Gershman. Action chunking as policy compression, Sep 2022. URL psyarxiv. com/z8yrv.",
+  "year": 2022,
+  "url": null
+ },
+ {
+  "num": 36,
+  "raw": "Michael Laskey, Jonathan Lee, Roy Fox, Anca D. Dragan, and Ken Goldberg. Dart: Noise injection for robust imitation learning. In Conference on Robot Learning, 2017.",
+  "year": 2017,
+  "url": null
+ },
+ {
+  "num": 37,
+  "raw": "Alex X. Lee, Henry Lu, Abhishek Gupta, Sergey Levine, and P. Abbeel. Learning force-based manipulation of deformable objects from multiple demonstrations. 2015 IEEE International Conference on Robotics and Automation (ICRA), pages 177–184, 2015.",
+  "year": 2015,
+  "url": null
+ },
+ {
+  "num": 38,
+  "raw": "Weiwei Li. Optimal control for biological movement systems. 2006.",
+  "year": 2006,
+  "url": null
+ },
+ {
+  "num": 39,
+  "raw": "Ajay Mandlekar, Danfei Xu, J. Wong, Soroush Nasiriany, Chen Wang, Rohun Kulkarni, Li Fei-Fei, Silvio Savarese, Yuke Zhu, and Roberto Mart’in-Mart’in. What matters in learning from ofﬂine human demonstrations for robot manipulation. In Conference on Robot Learning, 2021.",
+  "year": 2021,
+  "url": null
+ },
+ {
+  "num": 40,
+  "raw": "Kunal Menda, K. Driggs-Campbell, and Mykel J. Kochen- derfer. Ensembledagger: A bayesian approach to safe imitation learning. 2019 IEEE/RSJ International Confer- ence on Intelligent Robots and Systems (IROS), pages 5041–5048, 2018.",
+  "year": 2018,
+  "url": null
+ },
+ {
+  "num": 41,
+  "raw": "Samuel Paradis, Minho Hwang, Brijen Thananjeyan, Jeffrey Ichnowski, Daniel Seita, Danyal Fer, Thomas Low, Joseph Gonzalez, and Ken Goldberg. Intermittent visual servoing: Efﬁciently learning policies robust to instrument changes for high-precision surgical manipula- tion. 2021 IEEE International Conference on Robotics and Automation (ICRA), pages 7166–7173, 2020.",
+  "year": 2020,
+  "url": null
+ },
+ {
+  "num": 42,
+  "raw": "Jyothish Pari, Nur Muhammad, Sridhar Pandian Arunacha- lam, and Lerrel Pinto. The surprising effectiveness of representation learning for visual imitation. arXiv preprint arXiv:2112.01511, 2021.",
+  "year": 2021,
+  "url": null
+ },
+ {
+  "num": 43,
+  "raw": "Peter Pastor, Heiko Hoffmann, Tamim Asfour, and Stefan Schaal. Learning and generalization of motor skills by learning from demonstration. 2009 IEEE International Conference on Robotics and Automation, pages 763–768, 2009.",
+  "year": 2009,
+  "url": null
+ },
+ {
+  "num": 44,
+  "raw": "Dean A. Pomerleau. Alvinn: An autonomous land vehicle in a neural network. In NIPS, 1988.",
+  "year": 1988,
+  "url": null
+ },
+ {
+  "num": 45,
+  "raw": "Yuzhe Qin, Hao Su, and Xiaolong Wang. From one hand to multiple hands: Imitation learning for dexterous manipulation from single-camera teleoperation. IEEE Robotics and Automation Letters, 7:10873–10881, 2022.",
+  "year": 2022,
+  "url": null
+ },
+ {
+  "num": 46,
+  "raw": "Rouhollah Rahmatizadeh, Pooya Abolghasemi, Ladislau Bölöni, and Sergey Levine. Vision-based multi-task manipulation for inexpensive robots using end-to-end learning from demonstration. 2018 IEEE International Conference on Robotics and Automation (ICRA), pages 3758–3765, 2017.",
+  "year": 2017,
+  "url": null
+ },
+ {
+  "num": 47,
+  "raw": "Stéphane Ross, Geoffrey J. Gordon, and J. Andrew Bagnell. A reduction of imitation learning and structured prediction to no-regret online learning. In International Conference on Artiﬁcial Intelligence and Statistics, 2010.",
+  "year": 2010,
+  "url": null
+ },
+ {
+  "num": 48,
+  "raw": "Seyed Sina Mirrazavi Salehian, Nadia Figueroa, and Aude Billard. A uniﬁed framework for coordinated multi-arm motion planning. The International Journal of Robotics Research, 37:1205 – 1232, 2018.",
+  "year": 2018,
+  "url": null
+ },
+ {
+  "num": 49,
+  "raw": "Nur Muhammad (Mahi) Shaﬁullah, Zichen Jeff Cui, Ariuntuya Altanzaya, and Lerrel Pinto. Behavior trans- formers: Cloning k modes with one stone. ArXiv, abs/2206.11251, 2022.",
+  "year": 2022,
+  "url": null
+ },
+ {
+  "num": 50,
+  "raw": "Kaushik Shivakumar, Vainavi Viswanath, Anrui Gu, Yahav Avigal, Justin Kerr, Jeffrey Ichnowski, Richard Cheng, Thomas Kollar, and Ken Goldberg. Sgtm 2.0: Autonomously untangling long cables using interactive perception. ArXiv, abs/2209.13706, 2022.",
+  "year": 2022,
+  "url": null
+ },
+ {
+  "num": 51,
+  "raw": "Mohit Shridhar, Lucas Manuelli, and Dieter Fox. Cliport: What and where pathways for robotic manipulation. ArXiv, abs/2109.12098, 2021.",
+  "year": 2021,
+  "url": null
+ },
+ {
+  "num": 52,
+  "raw": "Mohit Shridhar, Lucas Manuelli, and Dieter Fox. Perceiver-actor: A multi-task transformer for robotic manipulation. ArXiv, abs/2209.05451, 2022.",
+  "year": 2022,
+  "url": null
+ },
+ {
+  "num": 53,
+  "raw": "Aravind Sivakumar, Kenneth Shaw, and Deepak Pathak. Robotic telekinesis: Learning a robotic hand imitator by watching humans on youtube. RSS, 2022.",
+  "year": 2022,
+  "url": null
+ },
+ {
+  "num": 54,
+  "raw": "Christian Smith, Yiannis Karayiannidis, Lazaros Nal- pantidis, Xavi Gratal, Peng Qi, Dimos V. Dimarogonas, and Danica Kragic. Dual arm manipulation - a survey. Robotics Auton. Syst., 60:1340–1353, 2012.",
+  "year": 2012,
+  "url": null
+ },
+ {
+  "num": 55,
+  "raw": "Kihyuk Sohn, Honglak Lee, and Xinchen Yan. Learning structured output representation using deep conditional generative models. In NIPS, 2015.",
+  "year": 2015,
+  "url": null
+ },
+ {
+  "num": 56,
+  "raw": "srcteam. Shadow teleoperation system plays jenga, Mar 2021. URL https://www.youtube.com/watch?v= 7K9brH27jvM.",
+  "year": 2021,
+  "url": "https://www.youtube.com/watch?v="
+ },
+ {
+  "num": 57,
+  "raw": "srcteam. How researchers are using shadow robot’s technology, Jun 2022. URL https://www.youtube.com/ watch?v=p36fYIoTD8M.",
+  "year": 2022,
+  "url": "https://www.youtube.com/"
+ },
+ {
+  "num": 58,
+  "raw": "srcteam. Shadow teleoperation system, Jun 2022. URL https://www.youtube.com/watch?v=cx8eznfDUJA.",
+  "year": 2022,
+  "url": "https://www.youtube.com/watch?v=cx8eznfDUJA."
+ },
+ {
+  "num": 59,
+  "raw": "Simon Stepputtis, Maryam Bandari, Stefan Schaal, and Heni Ben Amor. A system for imitation learning of contact-rich bimanual manipulation policies. 2022 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS), pages 11810–11817, 2022.",
+  "year": 2022,
+  "url": null
+ },
+ {
+  "num": 60,
+  "raw": "Priya Sundaresan, Jennifer Grannen, Brijen Thanan- jeyan, Ashwin Balakrishna, Jeffrey Ichnowski, Ellen R. Novoseller, Minho Hwang, Michael Laskey, Joseph Gon- zalez, and Ken Goldberg. Untangling dense non-planar knots by learning manipulation features and recovery policies. ArXiv, abs/2107.08942, 2021.",
+  "year": 2021,
+  "url": null
+ },
+ {
+  "num": 61,
+  "raw": "Gokul Swamy, Sanjiban Choudhury, J. Andrew Bagnell, and Zhiwei Steven Wu. Causal imitation learning under temporally correlated noise. In International Conference on Machine Learning, 2022.",
+  "year": 2022,
+  "url": null
+ },
+ {
+  "num": 62,
+  "raw": "Naftali Tishby and Noga Zaslavsky. Deep learning and the information bottleneck principle. 2015 IEEE Information Theory Workshop (ITW), pages 1–5, 2015.",
+  "year": 2015,
+  "url": null
+ },
+ {
+  "num": 63,
+  "raw": "Emanuel Todorov, Tom Erez, and Yuval Tassa. Mujoco: A physics engine for model-based control. 2012 IEEE/RSJ International Conference on Intelligent Robots and Sys- tems, pages 5026–5033, 2012.",
+  "year": 2012,
+  "url": null
+ },
+ {
+  "num": 64,
+  "raw": "Stephen Tu, Alexander Robey, Tingnan Zhang, and N. Matni. On the sample complexity of stability con- strained imitation learning. In Conference on Learning for Dynamics & Control, 2021.",
+  "year": 2021,
+  "url": null
+ },
+ {
+  "num": 65,
+  "raw": "Ashish Vaswani, Noam M. Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, and Illia Polosukhin. Attention is all you need. ArXiv, abs/1706.03762, 2017.",
+  "year": 2017,
+  "url": null
+ },
+ {
+  "num": 66,
+  "raw": "Solomon Wiznitzer, Luke Schmitt, and Matt Trossen. interbotix_ros_manipulators. URL https://github.com/ Interbotix/interbotix_ros_manipulators.",
+  "year": null,
+  "url": "https://github.com/"
+ },
+ {
+  "num": 67,
+  "raw": "Fan Xie, A. M. Masum Bulbul Chowdhury, M. Clara De Paolis Kaluza, Linfeng Zhao, Lawson L. S. Wong, and Rose Yu. Deep imitation learning for bimanual robotic manipulation. ArXiv, abs/2010.05134, 2020.",
+  "year": 2020,
+  "url": null
+ },
+ {
+  "num": 68,
+  "raw": "Andy Zeng, Peter R. Florence, Jonathan Tompson, Stefan Welker, Jonathan Chien, Maria Attarian, Travis Armstrong, Ivan Krasin, Dan Duong, Vikas Sindhwani, and Johnny Lee. Transporter networks: Rearranging the visual world for robotic manipulation. In Conference on Robot Learning, 2020.",
+  "year": 2020,
+  "url": null
+ },
+ {
+  "num": 69,
+  "raw": "Tianhao Zhang, Zoe McCarthy, Owen Jow, Dennis Lee, Ken Goldberg, and P. Abbeel. Deep imitation learning for complex manipulation tasks from virtual reality teleoperation. 2018 IEEE International Conference on Robotics and Automation (ICRA), pages 1–8, 2017.",
+  "year": 2017,
+  "url": null
+ },
+ {
+  "num": 70,
+  "raw": "Allan Zhou, Moo Jin Kim, Lirui Wang, Peter R. Florence, and Chelsea Finn. Nerf in the palm of your hand: Corrective augmentation for robotics via novel-view synthesis. ArXiv, abs/2301.08556, 2023.",
+  "year": 2023,
+  "url": null
+ },
+ {
+  "num": 71,
+  "raw": "Áron Horváth, Eszter Ferentzi, Kristóf Schwartz, Nina Jacobs, Pieter Meyns, and Ferenc Köteles. The measure- ment of proprioceptive accuracy: A systematic literature review. Journal of Sport and Health Science, 2022. ISSN 2095-2546. doi: https://doi.org/10.1016/j.jshs.2022.04. 001. URL https://www.sciencedirect.com/science/article/ pii/S2095254622000473. APPENDIX A. Comparing ALOHA with Prior Teleoperation Setups In Figure 9, we include more teleoperated tasks that ALOHA is capable of. We stress that all objects are taken directly from the real world without any modiﬁcation, to demonstrate ALOHA’s generality in real life settings. ALOHA exploits the kinesthetic similarity between leader and follower robots by using joint-space mapping for teleoperation. A leader-follower design choice dates back to at least as far as 1953, when Central Research Laboratories built teleoperation systems for handling hazardous material [27]. More recently, companies like RE2 [3] also built highly dexterous teleoperation systems with joint-space mapping. ALOHA is similar to these previous systems, while beneﬁting signiﬁcantly from recent advances of low-cost actuators and robot arms. It allows us to achieve similar levels of dexterity with much lower cost, and also without specialized hardware or expert assembly. Next, we compare the cost of ALOHA to recent teleoperation systems. DexPilot [21] controls a dexterous hand using image streams of a human hand. It has 4 calibrated Intel Realsense to capture the point cloud of a human hand, and retarget the pose to an Allegro hand. The Allegro hand is then mounted to a KUKA LBR iiwa7 R800. DexPilot allows for impressive tasks such as extracting money from a wallet, opening a penut jar, and insertion tasks in NIST board #1. We estimate the system cost to be around $100k with one arm+hand. More recent works such as Robotic Telekinesis [53, 6, 45] seek to reduce the cost of DexPilot by using a single RGB camera to detect hand pose, and retarget using learning techniques. While sensing cost is greatly reduced, the cost for robot hand and arm remains high: a dexterous hand has more degrees of freedom and is naturally pricier. Moving the hand around would also require an industrial arm with at least 2kg payload, increasing the price further. We estimate the cost of these systems to be around $18k with one arm+hand. Lastly, the Shadow Teleoperation System is a bimanual system for teleoperating two dexterous hands. Both hands are mounted to a UR10 robot, and the hand pose is obtained by either a tracking glove or a haptic glove. This system is the most capable among all aforementioned works, beneﬁtted from its bimanual design. However, it also costs the most, at at least $400k. ALOHA, on the other hand, is a bimanual setup that costs $18k ($20k after adding optional add-ons such as cameras). Reducing dexterous hands to parallel jaw grippers allows us to use light-weight and low-cost robots, which can be more nimble and require less service. Finally, we compare the capabilities of ALOHA with previous systems. We choose the most capable system as reference: the Shadow Teleoperation System [5], which costs more than 10x of ALOHA. Speciﬁcally, we found three demonstration videos [56, 57, 58] that contain 15 example use cases of the Shadow Teleoperation System, and seek to recreate them using ALOHA. The tasks include playing “beer pong”, “jenga,” and a rubik’s cube, using a dustpan and brush, twisting open a water bottle, pouring liquid out, untying velcro cable tie, picking up an egg and a light bulb, inserting and unplugging USB, RJ45, using a pipette, writing, twisting open an aluminum case, and in-hand rotation of Baoding balls. We are able to recreate 14 out of the 15 tasks with similar objects and comparable amount of time. We cannot recreate the Baoding ball in-hand rotation task, as our setup does not have a hand. B. Example Image Observations We include example image observations taken during policy execution time in Figure 10, for each of the 6 real tasks. From left to right, the 4 images are from top camera, front camera, left wrist, and right wrist respectively. The top and front cameras are static, while the wrist cameras move with the robots and give detailed views of the gripper. We also rotate the front camera by 90 degrees to capture more vertical space. For all cameras, the focal length is ﬁxed with auto-exposure on to adjust for changing lighting conditions. All cameras steam at 480 × 640 and 30fps. C. Detailed Architecture Diagram We include a more detailed architecture diagram in Figure 11. At training time, we ﬁrst sample tuples of RGB images and joint positions, together with the corresponding action sequence as prediction target (Step 1: sample data). We then infer style variable z using CVAE encoder shown in yellow (Step 2: infer z). The input to the encoder are 1) the [CLS] token, which consists of learned weights that are randomly initialized, 2) embedded joint positions, which are joint positions projected to the embedding dimension using a linear layer, 3) embedded action sequence, which is the action sequence projected to the embedding dimension using another linear layer. These inputs form a sequence of (k + 2) × embedding_dimension, and is processed with the transformer encoder. We only take the ﬁrst output, which corresponds to the [CLS] token, and use another linear network to predict the mean and variance of z’s distribution, parameterizing it as a diagonal Gaussian. A sample of z is obtained using reparameterization, a standard way to allow back-propagating through the sampling process so the encoder and decoder can be jointly optimized [33]. Next, we try to obtain the predicted action from CVAE decoder i.e. the policy (Step 3: predict action sequence). For each of the image observations, it is ﬁrst processed by a ResNet18 to obtain a feature map, and then ﬂattened to get a sequence of features. These features are projected to the embedding dimension with a linear layer, and we add a 2D sinusoidal position embedding to perserve the spatial information. The feature sequence from each camera is then concatenated to be used as input to the transformer encoder. Two additional inputs are joint positions and z, which are also projected to the embedding dimension with two linear layers respectively. The output of the transformer encoder are then used as both “keys” and “values” in cross attention layers of the transformer decoder, which predicts action sequence given encoder output. The “queries” are ﬁxed sinusoidal embeddings for the ﬁrst layer. At test time, the CVAE encoder (shown in yellow) is discarded and the CVAE decoder is used as the policy. The Fig. 9: Teleoperation task examples with ALOHA. We include videos on the project website. incoming observations (images and joints) are fed into the model in the same way as during training. The only difference is in z, which represents the “style” of the action sequence we want to elicit from the policy. We simply set z to a zero vector, which is the mean of the unit Gaussian prior used during training. Thus given an observation, the output of the policy is always deterministic, beneﬁting policy evaluation. D. Experiment Details and Hyperparameters We carefully tune the baselines and include the hyperparam- eters used in Table III, IV, V, VI, VII. For BeT, we found that increasing history length from 10 (as in original paper) to 100 greatly improves the performance. Large hidden dimension also generally helps. For VINN, the k used when retrieving nearest neighbor is adaptively chosen with the lowest validation loss, same as the original paper. We also found that using joint position differences in addition to visual feature similarity improves performance when there is no action chunking, in which case we have state weight = 10 when retrieving actions. However, we found this to hurt performance with action chunking and thus set state weight to 0 for action chunking experiments. E. User Study Details We conduct the user study with 6 participants, recruited from computer science graduate students, with 4 men and 2 women aged 22-25. 3 of the participants had experience teleoperating robots with a VR controller, and the other 3 has no prior experience teleoperating. None of the participants used ALOHA before. To implement the 5Hz version of ALOHA, we read from the leader robot at 5Hz, interpolate in the joint space, and send the interpolated positions to the robot at 50Hz. We choose tasks that emphasizes high-precision and close-loop visual feedback. We include images of the objects used in Figure 12. For threading zip cable tie, the hole measures 4mm x 1.5mm, and the cable tie measures 0.8mm x 3.5mm with a pointy tip. It is initially lying ﬂat on the table, and the operator needs to pick it up with one gripper, grasp the other end mid- air, then coordinate both hands to insert one end of the cable tie into the hole on the other end. For unstacking cup, we use two single-use plastic cups that has 2.5mm clearance between them when stacked. The teleoperator need to grasp the edge of upper cup, then either shake to separate or use the help from the other gripper. During the user study, we randomize the order in which operators attempt each task, and whether they use 50Hz or 5Hz controller ﬁrst. We also randomize the initial position of the object randomly around the table center. For each setting, the operator has 2 minutes to adapt, followed by 3 consecutive attempts of the task with duration recorded. F. Limitations We now discuss limitations of the ALOHA hardware and the policy learning with ACT. Fig. 10: Image observation examples for 5 real-world tasks. The 4 columns are [top camera, front camera, left wrist camera, right wrist camera] respectively. We rotate the front camera by 90 degree to capture more vertical space. Hardware Limitations. On the hardware front, ALOHA struggles with tasks that require multiple ﬁngers from both hands, for example opening child-proof pill bottles with a push tab. To open the bottle, one hand needs to hold the bottle and pushes down on the push tab, with the other hand twisting the lid open. ALOHA also struggles with tasks that require high amount of forces, for example lifting heavy objects, twisting open a sealed bottle of water, or opening markers caps that are tightly pressed together. This is because the low-cost motors cannot generate enough torque to support these manipulations. Tasks that requires ﬁnger nails are also difﬁcult for ALOHA, even though we design the grippers to be thin on the edge. For example, we are not able to lift the edge of packing tape when it is taped onto itself, or opening aluminum soda cans. Policy Learning Limitations. On the software front, we report all 2 tasks that we attempted where ACT failed to learn the behavior. The ﬁrst one is unwrapping candies. The steps involves picking up the candy from the table, pull on both ends of it, and pry open the wrapper to expose the candy. We collected 50 demonstrations to train the ACT policy. In our preliminary evaluation with 10 trials, the policy picks up the candy 10/10, pulls on both ends 8/10, while unwraps the candy 0/10. We attribute the failure to the difﬁculty of perception and lack of data. Speciﬁcally, after pulling the candy on both sides, the seam for prying open the candy wrapper could appear anywhere around the candy. During demonstration collection, it is difﬁcult even for human to discern. The operator needs to judge by looking at the graphics printed on the wrapper and ﬁnd the discontinuity. We constantly observe the policy trying to peel at places where the seam does not exist. To better track the progress, we attempted another evaluation where we give 10 trials for each candy, and repeat this for 5 candies. For this protocol, our policy successfully unwraps 3/5 candies. Another task that ACT struggles with is opening a small ziploc bag laying ﬂat on the table. The right gripper needs to ﬁrst pick it up, adjust it so that the left gripper can grasp ﬁrmly on the pulling region, followed by the right hand grasping the other side of the pulling region, and pull it open. Our policy trained with 50 demonstrations can consistently pick up the bag, while having difﬁculties performing the following 3 mid-air manipulation steps. We hypothesize that the bag is hard to perceive, and in addition, small differences in the pick up position can affect how the bag deforms, and result in large differences in where the pulling region ends up. We believe that pretraining, more data, and better perception are promising directions to tackle these extremely difﬁcult tasks. transformer encoder 4x self-attention blocks … … transformer decoder 7x cross-attention blocks joints cam 1 cam 4 position embeddings (ﬁxed) predicted action sequence 1 2 3 4 … transformer encoder 4x self-attention blocks … embedded action sequence embedded joints [CLS] … … … … … Demo Dataset … action sequence (k x 14) sample 4 RGB images 4x (480x640x3) joints (14) , batch size Training Step 1: sample data Step 2: infer z Step 3: predict action sequence … action sequence (k x 14) joints (14) linear layer 1 14 -> 512 … embedded action sequence (k x 512) + Sinusoidal Position Embedding linear layer 2 14 -> 512 embedded joints (512) [CLS] (512) Weight matrix (512) (512) (512) (k x 512) 15x20x728 300x728 300x512 linear layer 5 728 -> 512 ﬂatten + Sinusoidal PosEmb linear layer 4 512 -> 64 z_mean (32) z_std (32) sample with reparametrization linear layer 6 14 -> 512 linear layer 7 32 -> 512 Testing transformer encoder 4x self-attention blocks … … transformer decoder 7x cross-attention blocks joints cam 1 cam 4 position embeddings (ﬁxed) predicted action sequence 1 2 3 4 … … … … … … 15x20x728 300x728 300x512 linear layer 5 728 -> 512 ﬂatten + Sinusoidal PosEmb linear layer 6 14 -> 512 linear layer 7 32 -> 512 joints incoming observations ResNet18 +Sinusoidal PosEmb ResNet18 +Sinusoidal PosEmb Fig. 11: Detail architecture of Action Chunking with Transformers (ACT). Fig. 12: The cable tie and cups for user study. learning rate 1e-5 batch size 8 # encoder layers 4 # decoder layers 7 feedforward dimension 3200 hidden dimension 512 # heads 8 chunk size 100 beta 10 dropout 0.1 TABLE III: Hyperparameters of ACT. learning rate 3e-4 batch size 128 epochs 100 momentum 0.9 weight decay 1.5e-6 TABLE IV: Hyperparameters of BYOL, the feature extractor for VINN and BeT. learning rate 1e-4 batch size 64 # layers 6 # heads 6 hidden dimension 768 history length 100 weight decay 0.1 offset loss scale 1000 focal loss gamma 2 dropout 0.1 discretizer #bins 64 TABLE V: Hyperparameters of BeT. k (nearest neighbour) adaptive state weight 0 or 10 TABLE VI: Hyperparameters of VINN. learning rate 1e-5 batch size 2 ViT dim head 32 ViT window size 7 ViT mbconv expansion rate 4 ViT mbconv shrinkage rate 0.25 ViT dropout 0.1 RT-1 depth 6 RT-1 heads 8 RT-1 dim head 64 RT-1 action bins 256 RT-1 cond drop prob 0.2 RT-1 token learner num output tokens 8 weight decay 0 history length 6 TABLE VII: Hyperparameters of RT-1.",
+  "year": 1953,
+  "url": "https://doi.org/10.1016/j.jshs.2022.04."
+ }
+]
