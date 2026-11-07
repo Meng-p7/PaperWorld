@@ -183,7 +183,7 @@ initMobileNav();
   } else buildMap(bp);
   if (bp) {
     const halls = (bp.halls || []).filter(Boolean);
-    if (halls.length && !mobile) await mountStation3D(halls);
+    if (halls.length) await mountStation3D(halls);
   }
   const start = performance.now();
   setTimeout(() => $("#loader").classList.add("is-done"), Math.max(0, 420 - (performance.now() - start)));

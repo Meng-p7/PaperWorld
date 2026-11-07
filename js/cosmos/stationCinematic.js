@@ -34,9 +34,9 @@ function canvasTex(size, draw, { srgb = true, repeat = [1, 1] } = {}) {
   return t;
 }
 
-function hullTextures() {
+function hullTextures(size = 512) {
   const rnd = (seed => () => (seed = (seed * 16807) % 2147483647) / 2147483647)(42);
-  const albedo = canvasTex(512, (g, s) => {
+  const albedo = canvasTex(size, (g, s) => {
     g.fillStyle = "#9aa6b4"; g.fillRect(0, 0, s, s);
     for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
       const v = 150 + Math.floor(rnd() * 26);
@@ -67,7 +67,7 @@ function hullTextures() {
     }
   }, { repeat: [1, 1] });
 
-  const bump = canvasTex(512, (g, s) => {
+  const bump = canvasTex(size, (g, s) => {
     g.fillStyle = "#808080"; g.fillRect(0, 0, s, s);
     g.strokeStyle = "#3a3a3a"; g.lineWidth = 4;
     for (let i = 0; i <= 4; i++) {
@@ -81,7 +81,7 @@ function hullTextures() {
       }
   }, { srgb: false, repeat: [1, 1] });
 
-  const rough = canvasTex(256, (g, s) => {
+  const rough = canvasTex(Math.max(128, size >> 1), (g, s) => {
     g.fillStyle = "#8c8c8c"; g.fillRect(0, 0, s, s);
     for (let i = 0; i < 400; i++) {
       const v = 110 + Math.floor(Math.random() * 90);
@@ -92,8 +92,8 @@ function hullTextures() {
   return { albedo, bump, rough };
 }
 
-function floorTexture() {
-  return canvasTex(512, (g, s) => {
+function floorTexture(size = 512) {
+  return canvasTex(size, (g, s) => {
     g.fillStyle = "#6b7889"; g.fillRect(0, 0, s, s);
     for (let y = 0; y < s; y += 16) {
       g.fillStyle = y % 32 ? "#7a8798" : "#667384";
@@ -206,7 +206,8 @@ function holoPanelTexture(seed) {
 }
 
 /* ================= 几何装配 ================= */
-function buildStation(scene, doors, mats) {
+function buildStation(scene, doors, mats, seg = SEG) {
+  const SEG = seg; // 本厅几何分段随画质档位变化
   const group = new THREE.Group();
   scene.add(group);
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), P = new THREE.Vector3(), S = new THREE.Vector3(1, 1, 1);
@@ -432,7 +433,7 @@ const BLUR_FS = `varying vec2 vUv; uniform sampler2D tSrc; uniform vec2 uDir;
     gl_FragColor=vec4(s,1.0); }`;
 const COMPOSITE_FS = `varying vec2 vUv;
   uniform sampler2D tScene; uniform sampler2D tB1; uniform sampler2D tB2; uniform sampler2D tStreak;
-  uniform float uBloom; uniform float uTime; uniform float uExposure; uniform vec2 uRes;
+  uniform float uBloom; uniform float uStreak; uniform float uTime; uniform float uExposure; uniform vec2 uRes;
   vec3 aces(vec3 x){ return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0); }
   float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
   void main(){
@@ -443,7 +444,7 @@ const COMPOSITE_FS = `varying vec2 vUv;
     col.g=texture2D(tScene,uv).g;
     col.b=texture2D(tScene,uv-d*ca).b;
     col+= (texture2D(tB1,uv).rgb*0.65 + texture2D(tB2,uv).rgb*0.55) * uBloom;
-    col+= texture2D(tStreak,uv).rgb * vec3(0.35,0.62,1.0) * 0.55;
+    col+= texture2D(tStreak,uv).rgb * vec3(0.35,0.62,1.0) * uStreak;
     col*=uExposure;
     col=aces(col);
     col=pow(col,vec3(0.96,1.0,1.04));
@@ -456,17 +457,35 @@ const COMPOSITE_FS = `varying vec2 vUv;
     gl_FragColor=vec4(srgb,1.0);
   }`;
 
+/* ================= 画质档位 =================
+ * 不按屏幕宽度一刀切：初始按指针类型/内存/核数猜档，运行后按实测 FPS 动态降档。
+ * 控制：渲染分辨率(dpr*scale)、MSAA、阴影、泛光/光晕、几何分段、纹理尺寸。 */
+const TIERS = {
+  high:   { dpr: 1.5,  scale: 1,    msaa: 2, shadow: true,  shadowSize: 1024, bloom: true,  streak: true,  seg: 48, tex: 512 },
+  medium: { dpr: 1.25, scale: 0.85, msaa: 0, shadow: true,  shadowSize: 512,  bloom: true,  streak: false, seg: 36, tex: 256 },
+  low:    { dpr: 1,    scale: 0.7,  msaa: 0, shadow: false, shadowSize: 0,    bloom: false, streak: false, seg: 24, tex: 256 },
+};
+function guessTier() {
+  const coarse = matchMedia("(pointer: coarse)").matches || (navigator.maxTouchPoints || 0) > 0;
+  const mem = navigator.deviceMemory || 4;
+  const cores = navigator.hardwareConcurrency || 4;
+  if (coarse && (mem <= 4 || cores <= 4)) return "low";
+  if (coarse || mem <= 4 || cores <= 4) return "medium";
+  return "high";
+}
+
 /* ================= 主入口 ================= */
 export function createStation3D({ canvas, doors, onSelect }) {
-  if (innerWidth < 760) return null; // 窄屏交给 CSS 走廊
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
   } catch { return null; }
   if (!renderer.getContext()) return null;
   const isWebGL2 = renderer.capabilities.isWebGL2;
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
-  renderer.shadowMap.enabled = true;
+  let tier = guessTier();
+  let Q = { ...TIERS[tier] };
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, Q.dpr));
+  renderer.shadowMap.enabled = Q.shadow;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.NoToneMapping;
   renderer.info.autoReset = false; // 累计一帧内所有 pass 的 draw call
@@ -498,13 +517,13 @@ export function createStation3D({ canvas, doors, onSelect }) {
   scene.environment = pmrem.fromScene(envScene, 0.035).texture;
 
   /* --- 材质 --- */
-  const tex = hullTextures();
+  const tex = hullTextures(Q.tex);
   const mats = {
     hull: new THREE.MeshStandardMaterial({ map: tex.albedo, bumpMap: tex.bump, bumpScale: 0.6, roughnessMap: tex.rough, metalness: 0.5, roughness: 0.5, envMapIntensity: 0.8 }),
     frame: new THREE.MeshStandardMaterial({ color: 0x39445c, metalness: 0.85, roughness: 0.5, envMapIntensity: 1.1 }),
     pipe: new THREE.MeshStandardMaterial({ color: 0x6a7688, metalness: 0.9, roughness: 0.45, envMapIntensity: 1.2 }),
     door: new THREE.MeshStandardMaterial({ color: 0x1c2434, metalness: 0.85, roughness: 0.45, bumpMap: tex.bump, bumpScale: 0.3, envMapIntensity: 0.8 }),
-    floor: new THREE.MeshStandardMaterial({ map: floorTexture(), metalness: 0.55, roughness: 0.28, envMapIntensity: 1.2 }),
+    floor: new THREE.MeshStandardMaterial({ map: floorTexture(Q.tex), metalness: 0.55, roughness: 0.28, envMapIntensity: 1.2 }),
     ceil: new THREE.MeshStandardMaterial({ color: 0x141b28, metalness: 0.6, roughness: 0.7 }),
     hazard: new THREE.MeshStandardMaterial({ color: 0x2a2f3a, metalness: 0.4, roughness: 0.8 }),
     emissive: (hex, inten) => {
@@ -525,7 +544,7 @@ export function createStation3D({ canvas, doors, onSelect }) {
   }, { repeat: [4, 1] });
   mats.hazard.needsUpdate = true;
 
-  const built = buildStation(scene, doors, mats);
+  const built = buildStation(scene, doors, mats, Q.seg);
 
   /* --- 灯光 --- */
   scene.add(new THREE.HemisphereLight(0x9fb4cc, 0x2a3138, 1.25));
@@ -533,7 +552,8 @@ export function createStation3D({ canvas, doors, onSelect }) {
   const cool = new THREE.PointLight(0x9fe8f5, 90, 30, 2); cool.position.set(0, 2.4, 11); scene.add(cool);
   const key = new THREE.SpotLight(0xeaf6ff, 420, 40, 1.0, 0.7, 1.6);
   key.position.set(0, H - 0.4, 0); key.target.position.set(0, 0, 0);
-  key.castShadow = true; key.shadow.mapSize.set(1024, 1024); key.shadow.bias = -0.0005;
+  key.castShadow = Q.shadow;
+  if (Q.shadow) { key.shadow.mapSize.set(Q.shadowSize, Q.shadowSize); key.shadow.bias = -0.0005; }
   scene.add(key, key.target);
   built.doorMeta.forEach((d, i) => {
     const pl = new THREE.PointLight(i % 2 ? 0x66d9e8 : 0xf2b45c, 12, 8, 2);
@@ -545,12 +565,18 @@ export function createStation3D({ canvas, doors, onSelect }) {
   // 实例化批次的包围球需显式计算，视锥剔除才正确
   built.group.traverse((o) => { if (o.isInstancedMesh) o.computeBoundingSphere(); });
 
+  // 专业烘焙资产（GLB/KTX2）按需接入：无 manifest / 未 vendor 加载器时静默跳过
+  import("./assets.js")
+    .then((m) => m.loadProfessionalExhibits(scene, THREE, { renderer }))
+    .then((r) => { if (r.loaded) renderer.shadowMap.needsUpdate = true; })
+    .catch(() => {});
+
   /* 体积光锥 / 尘埃 / 透明全息环在本 MSAA+HalfFloat 组合下产生黑块伪影，
    * 已移除；氛围改由明亮布光 + 泛光 + 不发光屏幕承担。 */
 
   /* --- 渲染目标 / 后处理 --- */
   const rtOpts = { type: isWebGL2 ? THREE.HalfFloatType : THREE.UnsignedByteType, depthBuffer: true };
-  const rtScene = new THREE.WebGLRenderTarget(2, 2, { ...rtOpts, samples: isWebGL2 ? 2 : 0 });
+  const rtScene = new THREE.WebGLRenderTarget(2, 2, { ...rtOpts, samples: isWebGL2 ? Q.msaa : 0 });
   const rtB1a = new THREE.WebGLRenderTarget(2, 2, rtOpts), rtB1b = new THREE.WebGLRenderTarget(2, 2, rtOpts);
   const rtB2a = new THREE.WebGLRenderTarget(2, 2, rtOpts), rtB2b = new THREE.WebGLRenderTarget(2, 2, rtOpts);
   const rtS2 = new THREE.WebGLRenderTarget(2, 2, rtOpts);
@@ -561,7 +587,7 @@ export function createStation3D({ canvas, doors, onSelect }) {
   const blurMat = fsPass(BLUR_FS, { tSrc: { value: null }, uDir: { value: new THREE.Vector2() } });
   const compMat = fsPass(COMPOSITE_FS, {
     tScene: { value: null }, tB1: { value: null }, tB2: { value: null }, tStreak: { value: null },
-    uBloom: { value: 0.45 }, uTime: { value: 0 }, uExposure: { value: 1.22 }, uRes: { value: new THREE.Vector2(1, 1) },
+    uBloom: { value: Q.bloom ? 0.45 : 0 }, uStreak: { value: Q.streak ? 0.55 : 0 }, uTime: { value: 0 }, uExposure: { value: 1.22 }, uRes: { value: new THREE.Vector2(1, 1) },
   });
   const quad = new THREE.Mesh(quadGeo, brightMat); quadScene.add(quad);
   const runPass = (mat, target) => { quad.material = mat; renderer.setRenderTarget(target); renderer.render(quadScene, quadCam); };
@@ -570,9 +596,11 @@ export function createStation3D({ canvas, doors, onSelect }) {
   function resize() {
     W = canvas.clientWidth || innerWidth; Hh = canvas.clientHeight || innerHeight;
     renderer.setSize(W, Hh, false);
+    // 竖屏加宽 fov 以容纳环形大厅与舱门
+    camera.fov = (W / Hh < 0.85) ? 74 : 58;
     camera.aspect = W / Hh; camera.updateProjectionMatrix();
     const dpr = renderer.getPixelRatio();
-    const w = Math.max(2, Math.round(W * dpr)), h = Math.max(2, Math.round(Hh * dpr));
+    const w = Math.max(2, Math.round(W * dpr * Q.scale)), h = Math.max(2, Math.round(Hh * dpr * Q.scale));
     rtScene.setSize(w, h);
     rtB1a.setSize(w >> 1, h >> 1); rtB1b.setSize(w >> 1, h >> 1);
     rtB2a.setSize(w >> 2, h >> 2); rtB2b.setSize(w >> 2, h >> 2);
@@ -580,9 +608,24 @@ export function createStation3D({ canvas, doors, onSelect }) {
     compMat.uniforms.uRes.value.set(w, h);
   }
 
+  /* 运行中按实测 FPS 动态降档（不靠屏幕宽度判断性能） */
+  function applyTier(next) {
+    if (next === tier) return;
+    tier = next; Q = { ...TIERS[tier] };
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, Q.dpr));
+    renderer.shadowMap.enabled = Q.shadow;
+    key.castShadow = Q.shadow;
+    if (Q.shadow) { key.shadow.mapSize.set(Q.shadowSize, Q.shadowSize); if (key.shadow.map) { key.shadow.map.dispose(); key.shadow.map = null; } }
+    rtScene.samples = isWebGL2 ? Q.msaa : 0;
+    compMat.uniforms.uBloom.value = Q.bloom ? 0.45 : 0;
+    compMat.uniforms.uStreak.value = Q.streak ? 0.55 : 0;
+    shadowBaked = false; renderer.shadowMap.needsUpdate = true;
+    resize();
+  }
+
   /* --- 相机 / 交互（沿用原手感）--- */
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let yaw = 0, pitch = -0.06, yawV = 0, pitchV = 0, moveZ = -6, bob = 0, t0 = performance.now();
+  let yaw = 0, pitch = -0.06, yawV = 0, pitchV = 0, moveZ = (innerWidth < innerHeight ? -7.5 : -6), bob = 0, t0 = performance.now();
   let dragging = false, lastX = 0, lastY = 0, idle = 0;
   let focused = null, docking = false, dockT = 0, dockFrom = null, dockTo = null;
   let raf = 0, destroyed = false;
@@ -636,30 +679,47 @@ export function createStation3D({ canvas, doors, onSelect }) {
     setTimeout(() => onSelect && onSelect(d), reduced ? 0 : 1150);
   }
 
-  /* --- 事件 --- */
-  canvas.addEventListener("mousedown", (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; idle = 0; canvas.classList.add("is-grab"); });
-  addEventListener("mouseup", () => { dragging = false; canvas.classList.remove("is-grab"); });
-  addEventListener("mousemove", (e) => {
-    if (!dragging) return;
-    const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY;
-    yawV = -dx * 0.0022; pitchV = -dy * 0.0018;
+  /* --- 事件：Pointer Events 统一鼠标/触控；位移阈值区分点击与拖动 --- */
+  const DRAG_THRESH = 8; // css px：累计位移超过即视为拖动，松手不触发进入
+  let activePointer = null, moved = 0, isDrag = false;
+  function endPointer(e, allowClick) {
+    if (activePointer === null || (e && e.pointerId !== activePointer)) return;
+    try { canvas.releasePointerCapture(activePointer); } catch {}
+    const wasDrag = isDrag;
+    activePointer = null; dragging = false; isDrag = false; moved = 0;
+    canvas.classList.remove("is-grab");
+    if (allowClick && !wasDrag && !docking && focused) enter(focused);
+  }
+  canvas.addEventListener("pointerdown", (e) => {
+    if (activePointer !== null) return; // 只跟踪第一根指针
+    activePointer = e.pointerId;
+    lastX = e.clientX; lastY = e.clientY;
+    moved = 0; isDrag = false; dragging = true; idle = 0;
+    try { canvas.setPointerCapture(e.pointerId); } catch {}
+    canvas.classList.add("is-grab");
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (e.pointerId !== activePointer) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    moved += Math.abs(dx) + Math.abs(dy);
+    if (moved > DRAG_THRESH) isDrag = true;
+    const k = e.pointerType === "touch" ? 0.0030 : 0.0022;
+    const kp = e.pointerType === "touch" ? 0.0026 : 0.0018;
+    yawV = -dx * k; pitchV = -dy * kp;
     yaw += yawV; pitch = clamp(pitch + pitchV, -0.62, 0.62); idle = 0;
   });
-  canvas.addEventListener("click", () => { if (focused && !docking) enter(focused); });
-  canvas.addEventListener("touchstart", (e) => { dragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; idle = 0; }, { passive: true });
-  canvas.addEventListener("touchmove", (e) => {
-    if (!dragging) return;
-    const dx = e.touches[0].clientX - lastX, dy = e.touches[0].clientY - lastY;
-    lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
-    yawV = -dx * 0.0030; pitchV = -dy * 0.0026;
-    yaw += yawV; pitch = clamp(pitch + pitchV, -0.62, 0.62); idle = 0;
-  }, { passive: true });
-  canvas.addEventListener("touchend", () => { dragging = false; }, { passive: true });
+  canvas.addEventListener("pointerup", (e) => endPointer(e, true));
+  canvas.addEventListener("pointercancel", (e) => endPointer(e, false));
+  canvas.addEventListener("lostpointercapture", (e) => endPointer(e, false));
+  addEventListener("blur", () => endPointer(null, false));
+  document.addEventListener("visibilitychange", () => { if (document.hidden) endPointer(null, false); });
+  canvas.addEventListener("contextmenu", (e) => e.preventDefault());
   addEventListener("wheel", (e) => { if (docking) return; moveZ = clamp(moveZ + (e.deltaY > 0 ? -0.55 : 0.55), -9, 3.2); idle = 0; }, { passive: true });
   addEventListener("resize", resize, { passive: true });
 
   /* --- 帧循环 --- */
-  let fpsAcc = 0, fpsN = 0, qualityChecked = false;
+  let fpsAcc = 0, fpsN = 0, qualityChecked = false, lowSec = 0, lastTierChange = 0;
   let perfFpsT = performance.now(), perfFpsN = 0, perfFps = 0;
   let perfCpuAcc = 0, perfCpuN = 0, perfCpuMs = 0;
   function frame(now) {
@@ -694,13 +754,14 @@ export function createStation3D({ canvas, doors, onSelect }) {
     renderer.setRenderTarget(rtScene);
     renderer.render(scene, camera);
     if (!shadowBaked) { renderer.shadowMap.autoUpdate = false; shadowBaked = true; }
-    brightMat.uniforms.tSrc.value = rtScene.texture; runPass(brightMat, rtB1a);
-    blurMat.uniforms.tSrc.value = rtB1a.texture; blurMat.uniforms.uDir.value.set(1 / rtB1a.width, 0); runPass(blurMat, rtB1b);
-    blurMat.uniforms.tSrc.value = rtB1b.texture; blurMat.uniforms.uDir.value.set(0, 1 / rtB1b.height); runPass(blurMat, rtB1a);
-    blurMat.uniforms.tSrc.value = rtB1a.texture; blurMat.uniforms.uDir.value.set(2 / rtB2a.width, 0); runPass(blurMat, rtB2a);
-    blurMat.uniforms.tSrc.value = rtB2a.texture; blurMat.uniforms.uDir.value.set(0, 2 / rtB2a.height); runPass(blurMat, rtB2b);
-    // 变形镜头横向光晕（单 pass，复用 half-res 亮部）
-    blurMat.uniforms.tSrc.value = rtB1a.texture; blurMat.uniforms.uDir.value.set(9 / rtS2.width, 0); runPass(blurMat, rtS2);
+    if (Q.bloom) {
+      brightMat.uniforms.tSrc.value = rtScene.texture; runPass(brightMat, rtB1a);
+      blurMat.uniforms.tSrc.value = rtB1a.texture; blurMat.uniforms.uDir.value.set(1 / rtB1a.width, 0); runPass(blurMat, rtB1b);
+      blurMat.uniforms.tSrc.value = rtB1b.texture; blurMat.uniforms.uDir.value.set(0, 1 / rtB1b.height); runPass(blurMat, rtB1a);
+      blurMat.uniforms.tSrc.value = rtB1a.texture; blurMat.uniforms.uDir.value.set(2 / rtB2a.width, 0); runPass(blurMat, rtB2a);
+      blurMat.uniforms.tSrc.value = rtB2a.texture; blurMat.uniforms.uDir.value.set(0, 2 / rtB2a.height); runPass(blurMat, rtB2b);
+      if (Q.streak) { blurMat.uniforms.tSrc.value = rtB1a.texture; blurMat.uniforms.uDir.value.set(9 / rtS2.width, 0); runPass(blurMat, rtS2); }
+    }
     compMat.uniforms.tScene.value = rtScene.texture;
     compMat.uniforms.tB1.value = rtB1a.texture;
     compMat.uniforms.tB2.value = rtB2b.texture;
@@ -711,11 +772,13 @@ export function createStation3D({ canvas, doors, onSelect }) {
     focused = pick();
     updatePlates();
 
-    if (!qualityChecked) {
-      fpsAcc += dt; fpsN++;
-      if (fpsAcc > 2) {
-        qualityChecked = true;
-        if (fpsN / fpsAcc < 34) { renderer.setPixelRatio(1); resize(); }
+    // 动态画质：暖机(编译/PMREM)后才评估；连续 3 秒低于 40fps 降一档，降档后冷却 4s
+    if (perfFps > 0 && !docking && now - tCreate > 5000 && now - lastTierChange > 4000) {
+      if (perfFps < 40) lowSec++; else lowSec = 0;
+      if (lowSec >= 3) {
+        lowSec = 0; lastTierChange = now;
+        if (tier === "high") applyTier("medium");
+        else if (tier === "medium") applyTier("low");
       }
     }
     perfCpuAcc += performance.now() - cpuT; perfCpuN++;
@@ -760,6 +823,7 @@ export function createStation3D({ canvas, doors, onSelect }) {
       programs: ri.programs ? ri.programs.length : 0,
       texBytes, rtBytes,
       gpu: gpuString, webgl2: isWebGL2,
+      tier,
       dpr: renderer.getPixelRatio(),
       res: [canvas.width, canvas.height],
     };

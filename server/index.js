@@ -230,7 +230,7 @@ const CURATE_SYSTEM = `你是 PaperWorld 数字科研博物馆的策展 AI。任
 你必须只输出一个 JSON 对象，格式：
 {
   "acts": [
-    { "id": "why", "title": "为什么研究", "plain": "通俗解读，≤120字", "tech": "技术细节，≤160字", "quoteIds": ["a001"], "stat": {"value": "示例数字", "label": "这个数字是什么"} }
+    { "id": "problem", "title": "为什么这是一个难题", "plain": "通俗解读，≤120字", "tech": "技术细节，≤160字", "quoteIds": ["a001"], "stat": {"value": "示例数字", "label": "这个数字是什么"} }
   ],
   "zones": [
     { "id": "background", "title": "展区名，≤16字", "note": "展区讲解，≤110字", "quoteIds": ["a002"] }
@@ -238,7 +238,7 @@ const CURATE_SYSTEM = `你是 PaperWorld 数字科研博物馆的策展 AI。任
 }
 
 硬规则：
-1) acts 必须且只能包含这五幕：why / idea / how / result / meaning，顺序固定。
+1) acts 必须且只能包含这四幕：problem / solution / results / impact，顺序固定。solution 一幕内同时讲清硬件/装置与算法/方法；results 一幕放实验成绩与关键消融。
 2) plain 是写给没读过论文的人的，口语、有画面感、不用术语堆砌；tech 是给想深挖的人的，可包含术语但仍要克制。
 3) 不得编造任何事实、数值、百分比、实验结论。quoteIds 只能来自输入给你的清单，只能少不能多，也不能改写成新引文。
 4) stat.value 若填数字，必须是输入清单里出现过的数字原文；不确定就留空字符串。
@@ -251,9 +251,11 @@ function validatePlan(obj, allowedIds) {
   const rejects = [];
   const pct = /(\d+(?:\.\d+)?)\s?%/;
   const allowed = new Set(allowedIds);
+  const legacy = { why: "problem", idea: "solution", how: "solution", result: "results", meaning: "impact" };
   for (const a of Array.isArray(obj.acts) ? obj.acts : []) {
     const ids = Array.isArray(a.quoteIds) ? a.quoteIds.filter((x) => typeof x === "string") : [];
-    const bad = !["why", "idea", "how", "result", "meaning"].includes(a.id)
+    const aid = legacy[a?.id] || a?.id;
+    const bad = !["problem", "solution", "results", "impact"].includes(aid)
       || typeof a.title !== "string" || a.title.length > 40
       || typeof a.plain !== "string" || a.plain.length > 220
       || typeof a.tech !== "string" || a.tech.length > 320
@@ -261,7 +263,7 @@ function validatePlan(obj, allowedIds) {
       || pct.test(a.plain) || pct.test(a.tech);
     if (bad) { rejects.push(`act:${a?.id || "?"}`); continue; }
     acts.push({
-      id: a.id, title: a.title.trim(), plain: a.plain.trim(), tech: a.tech.trim(),
+      id: aid, title: a.title.trim(), plain: a.plain.trim(), tech: a.tech.trim(),
       quoteIds: ids, stat: (a.stat && typeof a.stat === "object")
         ? { value: String(a.stat.value || "").slice(0, 24), label: String(a.stat.label || "").slice(0, 40) }
         : null,

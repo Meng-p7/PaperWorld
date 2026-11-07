@@ -131,15 +131,17 @@
 
 .act__ix { margin-top: 28px; }
 
-/* 三层显隐 */
-.story[data-layer="story"] .act__tech,
-.story[data-layer="story"] .act__ev,
-.story[data-layer="story"] .act__ix { display: none; }
-.story[data-layer="tech"] .act__plain,
-.story[data-layer="tech"] .act__ev { display: none; }
-.story[data-layer="evidence"] .act__plain,
-.story[data-layer="evidence"] .act__tech,
-.story[data-layer="evidence"] .act__ix { display: none; }
+/* 3.2：深入阅读收进每幕 <details>，不再用全局 data-layer 切换 */
+.act__deep { margin-top: 22px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.act__deep > summary {
+  cursor: pointer; padding: 12px 16px;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em;
+  color: var(--cyan); list-style: none;
+}
+.act__deep > summary::-webkit-details-marker { display: none; }
+.act__deep > summary::before { content: "＋ "; }
+.act__deep[open] > summary::before { content: "－ "; }
+.act__deep-body { padding: 4px 16px 16px; }
 
 .story-foot {
   width: min(1020px, 100% - 48px); margin: var(--space-7) auto 0;

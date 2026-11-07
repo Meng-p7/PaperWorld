@@ -207,24 +207,23 @@ export function applyAIPlan(bp, result) {
   if (!result) return bp;
   const allowed = new Set(Object.keys(bp.evidence || {}));
   const acts = [];
-  const seen = new Set();
-  const order = ["why", "idea", "how", "result", "meaning"];
-  const list = Array.isArray(result.acts) ? result.acts : [];
+  const order = ["problem", "solution", "results", "impact"];
+  const legacy = { why: "problem", idea: "solution", how: "solution", result: "results", meaning: "impact" };
+  const list = (Array.isArray(result.acts) ? result.acts : [])
+    .map((a) => (a && typeof a === "object" ? { ...a, id: legacy[a.id] || a.id } : null))
+    .filter(Boolean);
   for (const id of order) {
-    const a = list.find((x) => x && x.id === id && !seen.has(id));
-    if (!a) continue;
-    seen.add(id);
-    const quotes = (Array.isArray(a.quoteIds) ? a.quoteIds : []).filter((x) => allowed.has(x)).slice(0, 4);
+    const group = list.filter((x) => x.id === id);
+    if (!group.length) continue;
+    const quotes = [...new Set(group.flatMap((g) => (Array.isArray(g.quoteIds) ? g.quoteIds : [])))].filter((x) => allowed.has(x)).slice(0, 4);
+    const plain = group.map((g) => String(g.plain || "")).filter(Boolean).join(" ").slice(0, 220);
+    const tech = group.map((g) => String(g.tech || "")).filter(Boolean).join(" ").slice(0, 320);
+    const title = String(group[0].title || id).slice(0, 40);
+    const statSrc = group.find((g) => g.stat?.value)?.stat;
     acts.push({
       id, n: `ACT 0${order.indexOf(id) + 1}`,
-      title: String(a.title || id).slice(0, 40),
-      tagline: String(a.title || id).slice(0, 40),
-      plain: String(a.plain || "").slice(0, 220),
-      tech: String(a.tech || "").slice(0, 320),
-      quotes,
-      figure: null,
-      stat: a.stat?.value ? { value: String(a.stat.value).slice(0, 24), label: String(a.stat.label || "").slice(0, 40), ev: quotes[0] } : null,
-      form: "hero",
+      title, tagline: title, plain, tech, quotes, figures: [],
+      stat: statSrc ? { value: String(statSrc.value).slice(0, 24), label: String(statSrc.label || "").slice(0, 40), ev: quotes[0] } : null,
     });
   }
   if (acts.length) {
