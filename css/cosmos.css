@@ -491,7 +491,10 @@ body.cosmos-studio .triad__n, body.cosmos-studio .gcard__tag { color: var(--holo
   .entrance__foot { padding: 12px 6vw 18px; }
   .entrance__hint { display: none; }
   .camstage__bar { width: 64px; }
-  .station__head { margin-top: 92px; }
+  .station__head { margin-top: 92px; padding: 12px 10px; border-radius: 12px;
+    background: linear-gradient(180deg, rgba(4, 6, 11, .9), rgba(4, 6, 11, .62) 70%, rgba(4, 6, 11, 0)); }
+  /* 窄屏 / 软件 GL 下 nebula 易过曝发白，压低保证标题可读 */
+  .cosmos-page #sky { opacity: .45; }
   .station__title { font-size: clamp(24px, 6vw, 34px); }
   .station__side { padding: 8px 12px; }
   .station__map { perspective: none; min-height: 0; margin-bottom: 36px; }

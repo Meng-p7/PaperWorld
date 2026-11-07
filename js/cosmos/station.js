@@ -5,7 +5,8 @@
 import { el, $, initMobileNav } from "../core/ui.js";
 import { loadExhibition } from "../core/store.js";
 import { createStarfield } from "./starfield.js";
-import { createStation3D } from "./station3d.js";
+import { createStation3D as createLegacyStation } from "./station3d.js";
+import { createStation3D as createCinematicStation } from "./stationCinematic.js";
 
 const qs = new URLSearchParams(location.search);
 const exhibitId = qs.get("e");
@@ -119,22 +120,29 @@ function mountStation3D(halls) {
     theta: (i / halls.length) * Math.PI * 2,
     id: h.id, kind: h.kind,
   }));
+  const onSelect = (d) => {
+    const target = d.id;
+    if (d.kind === "facade") { location.href = "story.html" + suffix; return; }
+    dock(target, null);
+  };
+  let s3 = null;
   try {
-    const s3 = createStation3D({
-      canvas, doors,
-      onSelect: (d) => {
-        const target = d.id;
-        if (d.kind === "facade") { location.href = "story.html" + suffix; return; }
-        dock(target, null);
-      },
-    });
-    if (s3) {
-      $("#map").style.display = "none";
-      $("#station3d").classList.add("is-live");
-      return s3;
-    }
+    s3 = createCinematicStation({ canvas, doors, onSelect });
   } catch (err) {
-    console.warn("[station3d] 降级到 CSS 走廊：", err.message);
+    console.warn("[station] 电影级渲染不可用：", err.message);
+  }
+  if (!s3) {
+    try {
+      s3 = createLegacyStation({ canvas, doors, onSelect });
+    } catch (err) {
+      console.warn("[station3d] 降级到 CSS 走廊：", err.message);
+    }
+  }
+  if (s3) {
+    $("#map").style.display = "none";
+    $("#station3d").classList.add("is-live");
+    $("#backend").textContent = s3.kind === "webgl-cinematic" ? "WEBGL2 / CINEMATIC PBR" : "WEBGL / GPU";
+    return s3;
   }
   $("#station3d").style.display = "none";
   return null;
@@ -173,7 +181,7 @@ initMobileNav();
   } else buildMap(bp);
   if (bp) {
     const halls = (bp.halls || []).filter(Boolean);
-    if (halls.length) mountStation3D(halls);
+    if (halls.length && !mobile) mountStation3D(halls);
   }
   const start = performance.now();
   setTimeout(() => $("#loader").classList.add("is-done"), Math.max(0, 420 - (performance.now() - start)));
