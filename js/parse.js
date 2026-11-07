@@ -4,8 +4,7 @@
 import { el, $, initTheme, initTopbar, initMobileNav } from "./core/ui.js";
 import { extractPdf } from "./engine/extract.js";
 import { analyze } from "./engine/analyze.js";
-import { curate, applyPlan, applyAIPlan } from "./engine/curate.js";
-import { enhancePlan, getLLMConfig, saveLLMConfig, clearLLMConfig, isLLMEnabled } from "./engine/llm.js";
+import { curate, applyAIPlan } from "./engine/curate.js";
 import { getCoreLink, submitCurate, waitTask } from "./engine/ai.js";
 import { saveExhibition, listExhibitions, deleteExhibition, makeId } from "./core/store.js";
 
@@ -28,7 +27,7 @@ const STEPS = [
   { t: "逐页抽取文本层", d: "重建单/双栏阅读顺序，把文字项拼回行与段", at: 52 },
   { t: "识别骨架与图注", d: "标题、作者、摘要、章节、图注、数值线索、参考文献", at: 70 },
   { t: "六维度分析论文", d: "研究背景 / 核心问题 / 创新点 / 技术路线 / 实验过程 / 结果", at: 88 },
-  { t: "动态规划展区与展品", d: "只建有原文依据的维度，按维度选展示形式", at: 94 },
+  { t: "规划四幕与完整资料", d: "按原文依据组织四幕故事，原始分厅归入完整资料", at: 94 },
   { t: "生成展签并归档", d: "每条原文语句绑定页码与逐字引文，写入本机展览库", at: 100 },
 ];
 
@@ -141,13 +140,9 @@ async function runCuration(bp) {
       console.warn("AI Core 策展降级：", e.message);
     }
   }
-  if (isLLMEnabled()) {
-    const r = await enhancePlan(bp);
-    return { source: "local", result: r, message: r.message || "本机模型已参与展区讲解" };
-  }
   return {
-    source: "none", result: null,
-    message: "未配置 AI Core 与模型，使用本地六维度分析完成提取式策展（真实、可溯源、不编造）。",
+    source: "local", result: null,
+    message: "未连接 AI Core，使用本地六维度分析完成提取式策展（真实、可溯源、不编造）。",
   };
 }
 
@@ -169,7 +164,6 @@ async function run(blob, sourceName) {
     setProgress(94, "准备策展任务…");
     const curation = await runCuration(bp);
     if (curation.source === "ai-core" && curation.result) applyAIPlan(bp, curation.result);
-    else if (curation.source === "local" && curation.result) applyPlan(bp, curation.result);
 
     setProgress(98, "写入本机展览库…");
     const id = makeId();
@@ -178,8 +172,8 @@ async function run(blob, sourceName) {
 
     $("#result-title").textContent = bp.meta.title;
     $("#result-note").textContent =
-      `已规划 ${bp.halls.length} 间展区、${Object.keys(bp.evidence).length} 条可溯源展签。` +
-      curation.message + " 正文全部是 PDF 原文直引，编辑性文字与模型讲解单独标注。";
+      `已生成四幕故事与 ${bp.halls.length} 个原始资料分厅，共 ${Object.keys(bp.evidence).length} 条可溯源证据。` +
+      curation.message + " 原文与策展语分开标注，结论均可回到原页。";
     const stats = [
       ["页数", ex.pageCount], ["原文展签", Object.keys(bp.evidence).length],
       ["命中维度", hit], ["识别章节", (bp.__raw?.sections || []).length],
@@ -191,8 +185,9 @@ async function run(blob, sourceName) {
       el("div", { class: "result__v", text: String(v) }),
       el("div", { class: "result__l", text: l })));
 
-    $("#enter").href = "station.html?e=" + encodeURIComponent(id);
-    $("#enter-story").href = "story.html?e=" + encodeURIComponent(id);
+    // 上传完成后默认进入四幕主线；空间站与完整资料是可选入口。
+    $("#enter").href = "story.html?e=" + encodeURIComponent(id);
+    $("#enter-station").href = "station.html?e=" + encodeURIComponent(id);
     $("#enter-read").href = "hall.html?e=" + encodeURIComponent(id);
     renderAnalysis(bp, curation);
     $result.classList.remove("is-hidden");
@@ -241,49 +236,29 @@ $("#again").addEventListener("click", () => {
   $drop.scrollIntoView({ behavior: "smooth", block: "center" });
 });
 
-/* ---------- 可选模型设置 ---------- */
-const cfg = getLLMConfig();
-$("#llm-endpoint").value = cfg.endpoint;
-$("#llm-model").value = cfg.model;
-$("#llm-key").value = cfg.apiKey;
-$("#llm-toggle").addEventListener("click", () => $("#llmcfg").classList.toggle("is-open"));
-$("#llm-save").addEventListener("click", () => {
-  saveLLMConfig({
-    endpoint: $("#llm-endpoint").value.trim(),
-    model: $("#llm-model").value.trim(),
-    apiKey: $("#llm-key").value.trim(),
-  });
-  $("#llm-hint").textContent = isLLMEnabled()
-    ? "已保存。下次生成时会调用一次模型；失败会自动降级，不影响展馆生成。"
-    : "已清空端点/模型，当前使用本地维度分析（默认）。";
-});
-$("#llm-clear").addEventListener("click", () => {
-  clearLLMConfig();
-  for (const id of ["#llm-endpoint", "#llm-model", "#llm-key"]) $(id).value = "";
-  $("#llm-hint").textContent = "已清除配置，恢复本地维度分析。";
-});
-
 /* ---------- 展览库 ---------- */
 function renderGallery() {
   $gallery.textContent = "";
   $gallery.append(el("article", { class: "gcard" },
-    el("div", { class: "gcard__tag", text: "CURATED · 人工策展示范展" }),
+    el("div", { class: "gcard__tag", text: "示范展" }),
     el("div", { class: "gcard__t", text: "Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware" }),
-    el("div", { class: "gcard__m", text: "ALOHA / ACT · 8 间展区 · 81 条逐字核对的引文 · 5 台互动装置" }),
+    el("div", { class: "gcard__m", text: "ALOHA / ACT · 四幕故事 · 81 条逐字核对的引文" }),
     el("div", { class: "gcard__a" },
-      el("a", { class: "btn btn--sm", href: "station.html", text: "进入空间站 →" }),
-      el("a", { class: "btn btn--ghost btn--sm", href: "hall.html", text: "直接阅读" }))));
+      el("a", { class: "btn btn--sm", href: "story.html", text: "阅读四幕故事 →" }),
+      el("a", { class: "btn btn--ghost btn--sm", href: "station.html", text: "进空间站" }),
+      el("a", { class: "text-link", href: "hall.html", text: "完整资料" }))));
 
   for (const x of listExhibitions()) {
     const date = new Date(x.created).toLocaleDateString("zh-CN");
     const s = "?e=" + encodeURIComponent(x.id);
     $gallery.append(el("article", { class: "gcard" },
-      el("div", { class: "gcard__tag", text: "AI 策展 · 六维度分析" }),
+      el("div", { class: "gcard__tag", text: "自动策展" }),
       el("div", { class: "gcard__t", text: x.title }),
       el("div", { class: "gcard__m", text: `${x.source} · ${x.pages} 页 · ${x.evidenceCount} 条展签 · ${date}` }),
       el("div", { class: "gcard__a" },
-        el("a", { class: "btn btn--sm", href: "station.html" + s, text: "进入空间站 →" }),
-        el("a", { class: "btn btn--ghost btn--sm", href: "hall.html" + s, text: "直接阅读" }),
+        el("a", { class: "btn btn--sm", href: "story.html" + s, text: "阅读四幕故事 →" }),
+        el("a", { class: "btn btn--ghost btn--sm", href: "station.html" + s, text: "进空间站" }),
+        el("a", { class: "text-link", href: "hall.html" + s, text: "完整资料" }),
         el("button", { class: "btn btn--ghost btn--sm", text: "移除",
           onclick: async () => { await deleteExhibition(x.id); renderGallery(); } }))));
   }

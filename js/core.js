@@ -28,6 +28,7 @@ async function probe() {
   const h = await coreHealth(l);
   if (!h.ok) { pill($("#link-state"), h.error ? "连不上" : "异常", "is-bad"); out("后端不可达：" + (h.error || "未知错误"), "is-bad"); return false; }
   pill($("#link-state"), h.tokenRequired ? "已连接 · 需令牌" : "已连接", h.tokenRequired ? "is-warn" : "is-ok");
+  out(h.tokenRequired ? "后端可达 · 填写访问令牌后保存连接。" : "后端已连接。", "is-ok");
   return true;
 }
 
@@ -49,21 +50,18 @@ async function loadModel() {
 }
 
 /* ---------- 服务商预设 ---------- */
-async function loadProviders() {
+const FALLBACK_PROVIDERS = [
+  { id: "openai", label: "OpenAI", baseUrl: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini" },
+  { id: "deepseek", label: "DeepSeek", baseUrl: "https://api.deepseek.com/v1/chat/completions", model: "deepseek-chat" },
+  { id: "zhipu", label: "智谱 GLM", baseUrl: "https://open.bigmodel.cn/api/paas/v4/chat/completions", model: "glm-4-flash" },
+  { id: "qwen", label: "通义千问", baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", model: "qwen-plus" },
+  { id: "moonshot", label: "Moonshot", baseUrl: "https://api.moonshot.cn/v1/chat/completions", model: "moonshot-v1-8k" },
+  { id: "anthropic", label: "Anthropic", baseUrl: "https://api.anthropic.com/v1/messages", model: "claude-3-5-sonnet-latest" },
+  { id: "custom", label: "自定义", baseUrl: "", model: "" },
+];
+
+function paintProviders(list) {
   const box = $("#providers");
-  let list = [];
-  try { list = await listProviders(link()); } catch { /* 后端不可用时用本地兜底 */ }
-  if (!list.length) {
-    list = [
-      { id: "openai", label: "OpenAI", baseUrl: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini" },
-      { id: "deepseek", label: "DeepSeek", baseUrl: "https://api.deepseek.com/v1/chat/completions", model: "deepseek-chat" },
-      { id: "zhipu", label: "智谱 GLM", baseUrl: "https://open.bigmodel.cn/api/paas/v4/chat/completions", model: "glm-4-flash" },
-      { id: "qwen", label: "通义千问", baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", model: "qwen-plus" },
-      { id: "moonshot", label: "Moonshot", baseUrl: "https://api.moonshot.cn/v1/chat/completions", model: "moonshot-v1-8k" },
-      { id: "anthropic", label: "Anthropic", baseUrl: "https://api.anthropic.com/v1/messages", model: "claude-3-5-sonnet-latest" },
-      { id: "custom", label: "自定义", baseUrl: "", model: "" },
-    ];
-  }
   box.textContent = "";
   for (const p of list) {
     box.append(el("button", {
@@ -78,6 +76,12 @@ async function loadProviders() {
       },
     }));
   }
+}
+
+async function loadProviders() {
+  let list = [];
+  try { list = await listProviders(link()); } catch { /* 后端不可用时用本地预设 */ }
+  paintProviders(list.length ? list : FALLBACK_PROVIDERS);
 }
 
 /* ---------- 任务列表（后端 + 本机记录） ---------- */
@@ -176,11 +180,20 @@ $("#btn-clear-model").addEventListener("click", async () => {
   } catch (e) { out("清除失败：" + e.message, "is-bad"); }
 });
 
-/* ---------- 初始化 ---------- */
+/* ---------- 初始化 ----------
+ * 没有保存过后端地址时不主动发请求：避免首次打开就产生连接错误，
+ * 也让用户先填地址、再点「探测后端」。 */
 (async () => {
   const l = getCoreLink();
-  if (l.backend) { $("#in-backend").value = l.backend; $("#in-token").value = l.token; }
-  else $("#in-backend").value = "http://localhost:8080";
+  if (!l.backend) {
+    $("#in-backend").value = "http://localhost:8080";
+    pill($("#link-state"), "未连接", "is-warn");
+    out("填写后端地址后点「探测后端」。");
+    paintProviders(FALLBACK_PROVIDERS);
+    return;
+  }
+  $("#in-backend").value = l.backend;
+  $("#in-token").value = l.token;
   await probe();
   await loadModel();
   await loadProviders();

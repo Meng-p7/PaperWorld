@@ -3,18 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PaperWorld · 深空科研博物馆</title>
-<meta name="description" content="PaperWorld 把学术论文变成一座可以穿越星海进入的数字科研博物馆。上传 PDF，本地解析，全部原文结论可追溯到论文原页。">
+<title>PaperWorld · 把论文变成可以走进去的科研故事</title>
+<meta name="description" content="PaperWorld 用四幕故事和一处可以走进去的空间站，让人在几分钟内读懂一篇论文。每条结论都能回到论文原页。">
 <script>
-  // 旧版分享链接 index.html?e=<id> 继续可用，平移到展馆层
+  // 旧分享链接 index.html?e=<id> 继续可用，现在统一进入四幕主线。
   (function () {
     var q = new URLSearchParams(location.search);
-    if (q.has("e")) location.replace("hall.html" + location.search + location.hash);
+    if (q.has("e")) location.replace("story.html" + location.search + location.hash);
   })();
 </script>
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/cosmos.css">
+<link rel="stylesheet" href="css/refined.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23040711'/><path d='M8 22V10l8 7 8-7v12' stroke='%238ce8ff' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
 </head>
 <body class="cosmos-page">
@@ -23,84 +24,65 @@
   <div class="cosmos-loader__in">
     <div class="cosmos-loader__mark">PaperWorld</div>
     <div class="cosmos-loader__track"><i></i></div>
-    <div class="cosmos-loader__t" id="loader-text">正在校准星图 · CALIBRATING STAR MAP</div>
+    <div class="cosmos-loader__t" id="loader-text">正在接近空间站</div>
   </div>
 </div>
 
 <canvas id="sky" class="cosmos__layer" aria-hidden="true"></canvas>
 <canvas id="particles" class="cosmos__layer cosmos__particles" aria-hidden="true"></canvas>
-<div class="cosmos__vignette" aria-hidden="true"></div>
-<div class="cosmos__scanlines" aria-hidden="true"></div>
+<canvas id="entrance-canvas" class="entrance-scene" aria-hidden="true"></canvas>
+<div class="entrance-scrim" aria-hidden="true"></div>
 
 <header class="cosmos-topbar">
-  <a class="brand" href="index.html"><b>PaperWorld</b><span class="brand__sub">DEEP SPACE MUSEUM</span></a>
+  <a class="brand" href="index.html"><b>PaperWorld</b><span class="brand__sub">科研博物馆</span></a>
   <nav class="cosmos-nav">
-    <a href="index.html" class="is-active is-keep">宇宙入口</a>
+    <a href="index.html" class="is-active">首页</a>
     <a href="station.html">空间站</a>
+    <a href="story.html">科研故事</a>
     <a href="parse.html">上传论文</a>
-    <a href="about.html">关于 / 方法</a>
-    <span class="cosmos-nav__sep"></span>
-    <button id="skip" class="is-keep" title="跳过镜头动画，直接进入空间站"><span class="only-wide">跳过动画 ⤴</span><span class="only-narrow">跳过</span></button>
+    <a href="core.html">AI Core</a>
+    <a href="about.html">关于</a>
+    <button id="skip" class="cosmos-nav__go">跳过动画</button>
+    <button id="nav-toggle" class="iconbtn nav-toggle" aria-label="打开导航" aria-expanded="false" aria-controls="mobile-menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
   </nav>
+  <div id="mobile-menu" class="mobile-menu" aria-label="移动端导航">
+    <a href="index.html">首页</a>
+    <a href="station.html">空间站</a>
+    <a href="story.html">科研故事</a>
+    <a href="parse.html">上传论文</a>
+    <a href="core.html">AI Core</a>
+    <a href="about.html">关于</a>
+  </div>
 </header>
 
 <main class="entrance">
-  <div class="entrance__station" id="station-art" aria-hidden="true">
-    <div class="ring"></div><div class="ring ring--2"></div><div class="ring ring--3"></div>
-    <div class="core"></div>
-    <div class="spoke" style="transform:rotate(0deg)"></div>
-    <div class="spoke" style="transform:rotate(90deg)"></div>
-    <div class="spoke" style="transform:rotate(180deg)"></div>
-    <div class="spoke" style="transform:rotate(270deg)"></div>
-  </div>
-
   <div class="entrance__body" id="hero">
-    <div class="cosmos-kicker">PAPERWORLD 2.0 · AI 数字科研博物馆</div>
-    <h1 class="entrance__title">把论文，<br>送进<em>星海</em></h1>
+    <p class="entrance__eyebrow">AI 数字科研博物馆</p>
+    <h1 class="entrance__title">把论文，<br>送到<em>眼前</em></h1>
     <p class="entrance__sub">
-      一座漂浮在深空里的科研博物馆。每篇论文被解析成一间间可进入的展区，
-      每件展品都留着回到原文那一页的坐标。镜头往前，知识往后——我们出发。
+      用四幕故事读懂一篇论文：为什么研究、怎么做到、效果如何、还留下什么。
+      每条结论都能回到原文那一页。
     </p>
     <div class="entrance__actions">
-      <button class="cbtn cbtn--primary" id="launch">启动探索 &nbsp;→</button>
-      <a class="cbtn cbtn--ghost" href="station.html">直接进入空间站</a>
+      <button class="cbtn cbtn--primary" id="launch">进入空间站</button>
+      <a class="cbtn cbtn--ghost" href="parse.html">上传我的论文</a>
     </div>
-    <div class="entrance__meta" id="hero-meta">
-      <span>首展 <b>ALOHA / ACT</b></span>
-      <span id="meta-stat">正在读取展馆索引…</span>
-      <span>本地解析 · 原文可溯源</span>
-    </div>
-
-    <div class="entrance__docks">
-      <a class="dock" href="station.html">
-        <div class="dock__n">DOCK 01 / EXHIBITION</div>
-        <div class="dock__t">进入首展</div>
-        <div class="dock__x">低成本双臂精细操作：8 间展区、81 条逐字核对的原文引文、5 台可上手的互动装置。</div>
-        <span class="dock__go">对接空间站 →</span>
-      </a>
-      <a class="dock" href="parse.html">
-        <div class="dock__n">DOCK 02 / CURATION</div>
-        <div class="dock__t">上传我的论文</div>
-        <div class="dock__x">本地解析 PDF、按六个研究维度规划展区，生成一座属于这篇论文的展馆。</div>
-        <span class="dock__go">开始布展 →</span>
-      </a>
-      <a class="dock" href="about.html">
-        <div class="dock__n">DOCK 03 / METHOD</div>
-        <div class="dock__t">方法与边界</div>
-        <div class="dock__x">策展链路、准确性契约、技术架构，以及现在还做不到的事。</div>
-        <span class="dock__go">查看说明 →</span>
-      </a>
-    </div>
+    <p class="entrance__first" id="first-story">
+      首展 ALOHA / ACT · 四幕约 2 分钟 · 81 条可核验证据
+      <a href="story.html">直接阅读 →</a>
+    </p>
   </div>
 
   <div class="entrance__foot">
     <div class="camstage" aria-label="镜头阶段">
-      <span class="camstage__i is-on" data-stage="CRUISE">01 巡航</span>
-      <span class="camstage__i" data-stage="WARP">02 曲速</span>
+      <span class="camstage__i is-on" data-stage="CRUISE">01 远景</span>
+      <span class="camstage__i" data-stage="WARP">02 接近</span>
       <span class="camstage__i" data-stage="DOCK">03 对接</span>
       <div class="camstage__bar"><i id="cam-bar"></i></div>
     </div>
-    <div class="entrance__hint">滚动 / 点击 <span>启动探索</span> 推进镜头 · 随时可跳过</div>
+    <div class="entrance__hint">滚动或点击「进入空间站」推进镜头 · 随时可跳过</div>
   </div>
 </main>
 

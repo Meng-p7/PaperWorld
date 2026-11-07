@@ -2,14 +2,44 @@
  * 同一套渲染器同时服务「策展过的示范展」与「用户上传后自动生成的展」。
  * 区别只在 blueprint 数据；渲染逻辑不写死任何一篇论文。
  */
-import { el, $, $$, initTheme, initTopbar, initReveal, initMobileNav } from "../core/ui.js";
-import { initDrawer, openEvidence, openPage, evChip, withEv } from "../core/drawer.js";
+import { el, $, initTheme, initTopbar, initReveal, initMobileNav } from "../core/ui.js";
+import { initDrawer, openEvidence, openPage, withEv } from "../core/drawer.js";
 import { mountInteractive } from "../interactives.js";
 import { mountGeneric } from "./generic.js";
 import { loadExhibition } from "../core/store.js";
 
 let BP = null;
 let REFS = [];
+
+/* 完整资料只做一件事：保住原有内容，但把原来的七个编号展区归到四幕主题下。
+ * 默认阅读主线是 story.html；hall.html 是主动进入的档案。 */
+const ARCHIVE_GROUPS = [
+  { id: "problem", title: "第一幕 · 为什么研究", desc: "研究背景、核心问题与问题的难点。" },
+  { id: "solution", title: "第二幕 · 怎么做", desc: "硬件系统与技术路线合并阅读。" },
+  { id: "results", title: "第三幕 · 效果如何", desc: "实验结果与消融分析放在同一主题下。" },
+  { id: "impact", title: "第四幕 · 价值与局限", desc: "研究意义、边界与仍做不到的事。" },
+  { id: "refs", title: "参考文献与其他资料", desc: "原文页图、引用来源与档案入口。" },
+];
+const HALL_GROUP = {
+  question: "problem", background: "problem",
+  specimen: "solution", method: "solution", innovation: "solution", plates: "solution",
+  bench: "results", ablation: "results", experiment: "results", result: "results",
+  horizon: "impact", limitation: "impact",
+  archive: "refs",
+};
+function groupOfHall(h) {
+  if (HALL_GROUP[h.id]) return HALL_GROUP[h.id];
+  const raw = String(h.id || "").replace(/^dim-/, "");
+  return HALL_GROUP[raw] || (h.kind === "archive" ? "refs" : "refs");
+}
+function groupedHalls() {
+  const map = new Map(ARCHIVE_GROUPS.map((g) => [g.id, []]));
+  for (const h of BP.halls || []) {
+    if (h.kind === "facade") continue;
+    map.get(groupOfHall(h)).push(h);
+  }
+  return map;
+}
 
 /* ---------------- 载入展览 ---------------- */
 async function resolveBlueprint() {
@@ -162,54 +192,19 @@ function blockRender(b) {
   return fn ? fn(b) : el("p", { class: "small dimmer", text: `未知块：${b.t}` });
 }
 
-/* ---------------- 序厅 ---------------- */
-function renderFacade(h) {
-  const sec = el("section", { class: "facade page", id: h.id });
+/* ---------------- 完整资料：简洁封面 ---------------- */
+function renderArchiveIntro(h) {
+  const sec = el("section", { class: "archive-intro page", id: "archive-intro" });
   sec.append(
-    el("div", { class: "tag reveal", text: h.kicker }),
-    el("h1", { class: "facade__title reveal", text: h.title }),
-    el("div", { class: "facade__zh reveal", text: h.titleZh }));
-
-  const au = el("div", { class: "authors reveal" });
-  for (const a of h.authors || []) au.append(el("span", { class: "au" }, el("b", { text: a.name }), el("span", { text: a.aff })));
-  sec.append(au);
-  sec.append(el("div", { class: "venue reveal" },
-    el("span", { text: h.venue }), el("span", { class: "dot" }), el("span", { text: h.domain })));
-
-  // 入口陈列窗：示范展用论文主图；自动展把首页 PDF 渲染成一个标本窗
-  const fromPlate = h.figure && {
-    src: h.figure.src,
-    label: "SPECIMEN 00 · 论文首页（本地渲染）",
-    meta: `PAGE 1 / ${BP.meta.pages || "?"} · ${BP.meta.paperLabel || BP.meta.sourceName || "原 PDF"}`,
-  };
-  const hero = BP.meta.hero || fromPlate;
-  if (hero) {
-    sec.append(el("div", { class: "stage reveal" + (!BP.meta.hero ? " stage--paper" : "") },
-      el("img", { src: hero.src, alt: hero.label, loading: "eager" }),
-      el("div", { class: "stage__scrim" }),
-      el("div", { class: "stage__corner stage__corner--tl" }),
-      el("div", { class: "stage__corner stage__corner--br" }),
-      el("div", { class: "stage__top" },
-        el("span", { class: "stage__label", text: hero.label }),
-        el("span", { class: "stage__meta", text: hero.meta })),
-      el("div", { class: "stage__cta" },
-        el("a", { class: "btn", href: "#question", text: "开始参观 ↓" }),
-        el("a", { class: "btn btn--ghost", href: "parse.html", text: "上传我的论文" })),
-      el("div", { class: "stage__scroll" }, el("span", { text: "SCROLL TO EXPLORE" }), el("i"))));
-  }
-
-  sec.append(el("div", { class: "curator reveal" }, el("b", { text: "策展人语 · " }), h.curator));
-
-  const stats = el("div", { class: "stats reveal" });
-  for (const s of h.stats || []) {
-    const value = s.dynamic === "evidence" ? String(Object.keys(BP.evidence).length) : s.value;
-    stats.append(withEv(el("div", { class: "stat" },
-      el("div", { class: "stat__v", text: value }),
-      el("div", { class: "stat__l", text: s.label }),
-      el("div", { class: "stat__s", text: s.sub })), s.ev));
-  }
-  sec.append(stats);
-  if (h.figure && !hero) sec.append(blocks.figure(h.figure));
+    el("p", { class: "archive-intro__eyebrow", text: "完整资料 · 主动进入的档案模式" }),
+    el("h1", { class: "archive-intro__title", text: h?.title || BP.meta?.title || "论文档案" }),
+    el("p", { class: "archive-intro__lead", text: "这里保留论文的原始分厅、全部原文证据、互动装置与参考文献。默认阅读请回到四幕科研故事。" }));
+  const authors = (h?.authors || []).map((a) => a.name).filter(Boolean);
+  if (authors.length) sec.append(el("p", { class: "archive-intro__meta", text: authors.join(" · ") }));
+  const ev = Object.keys(BP.evidence || {}).length;
+  sec.append(el("p", { class: "archive-intro__meta", text: `${BP.meta?.pages || "—"} 页原文 · ${ev} 条可核验证据 · ${(BP.halls || []).length} 个原始分厅` }));
+  sec.append(el("div", { class: "archive-intro__links" },
+    el("a", { class: "text-link", href: "story.html" + (new URLSearchParams(location.search).get("e") ? "?e=" + encodeURIComponent(new URLSearchParams(location.search).get("e")) : ""), text: "← 回到四幕科研故事" })));
   return sec;
 }
 
@@ -225,18 +220,7 @@ function renderHall(h) {
   return sec;
 }
 
-/* ---------------- 导览轨 + 进度 ---------------- */
-function buildRail() {
-  const rail = $("#rail");
-  for (const h of BP.halls) rail.append(el("a", { href: `#${h.id}`, dataset: { hall: h.id }, title: h.title },
-    el("i"), el("span", { text: h.num || "00" })));
-  const links = $$("#rail a");
-  const io = new IntersectionObserver((es) => {
-    for (const e of es) if (e.isIntersecting)
-      links.forEach((a) => a.classList.toggle("is-on", a.dataset.hall === e.target.id));
-  }, { rootMargin: "-45% 0px -45% 0px" });
-  BP.halls.forEach((h) => { const n = document.getElementById(h.id); if (n) io.observe(n); });
-}
+/* ---------------- 进度 ---------------- */
 function buildProgress() {
   const bar = $("#progress");
   const onScroll = () => {
@@ -247,53 +231,88 @@ function buildProgress() {
   addEventListener("scroll", onScroll, { passive: true });
 }
 
-/* ---------------- 2.0 全息展区导航 + 空间转场 ---------------- */
+/* ---------------- 完整资料：四主题折叠 ---------------- */
+function renderArchive(groups) {
+  const main = $("#halls");
+  const holder = el("div", { class: "archive-groups" });
+  const hash = location.hash ? decodeURIComponent(location.hash.slice(1)) : "";
+  const gidFromHash = hash.replace(/^group-/, "");
+  const targetGroup = hash
+    ? ARCHIVE_GROUPS.find((g) => (groups.get(g.id) || []).some((h) => h.id === hash))
+      || ARCHIVE_GROUPS.find((g) => g.id === gidFromHash)
+    : null;
+
+  ARCHIVE_GROUPS.forEach((g, i) => {
+    const halls = groups.get(g.id) || [];
+    if (!halls.length) return;
+    const details = el("details", { class: "archive-group", id: "group-" + g.id });
+    // 只有目标主题（或未指定锚点时的第一个主题）默认展开，其余保持折叠。
+    details.open = targetGroup ? targetGroup.id === g.id : i === 0;
+    details.append(el("summary", { class: "archive-group__head" },
+      el("span", { class: "archive-group__n", text: String(i + 1).padStart(2, "0") }),
+      el("span", { class: "archive-group__t" },
+        el("span", { class: "archive-group__title", text: g.title }),
+        el("span", { class: "archive-group__desc", text: g.desc })),
+      el("span", { class: "archive-group__c", text: `${halls.length} 个原始分厅` })));
+    const body = el("div", { class: "archive-group__body" });
+    for (const h of halls) body.append(renderHall(h));
+    details.append(body);
+    holder.append(details);
+  });
+  main.append(holder);
+}
+
+/* ---------------- 全息导航 + 主题定位 ---------------- */
 function initHoloNav() {
   const holder = $("#holo-links");
   if (!holder) return;
   const eid = new URLSearchParams(location.search).get("e");
   const suffix = eid ? "?e=" + encodeURIComponent(eid) : "";
-  $("#holo-back").href = "station.html" + suffix;
+  $("#holo-back").href = "story.html" + suffix;
+  $("#holo-back").textContent = "← 科研故事";
 
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const flash = $("#hall-warp");
   const links = [];
 
-  function warpTo(hid) {
-    const target = document.getElementById(hid);
-    if (!target) return;
+  function warpTo(gid, hallId) {
+    const group = document.getElementById("group-" + gid);
+    if (!group) return;
+    group.open = true;
+    const target = hallId ? document.getElementById(hallId) : group;
     if (flash && !reduced) {
       flash.classList.add("is-on");
       setTimeout(() => flash.classList.remove("is-on"), 230);
     }
     document.documentElement.style.scrollBehavior = "auto";
-    target.scrollIntoView({ behavior: "instant", block: "start" });
-    scrollBy(0, -128); // 让开固定顶栏 + 全息导航条
+    (target || group).scrollIntoView({ behavior: "instant", block: "start" });
+    scrollBy(0, -122);
     setTimeout(() => { document.documentElement.style.scrollBehavior = ""; }, 80);
-    links.forEach((a) => a.classList.toggle("is-on", a.dataset.hall === hid));
+    links.forEach((a) => a.classList.toggle("is-on", a.dataset.group === gid));
   }
 
-  for (const h of BP.halls) {
+  for (const g of ARCHIVE_GROUPS) {
     const a = el("a", {
-      href: "#" + h.id, dataset: { hall: h.id },
-      text: `${h.num || "00"} ${(h.title || "").slice(0, 12)}`,
-      onclick: (e) => { e.preventDefault(); warpTo(h.id); },
+      href: "#group-" + g.id, dataset: { group: g.id },
+      text: g.title.replace(/^第.幕 · /, ""),
+      onclick: (e) => { e.preventDefault(); warpTo(g.id); },
     });
     holder.append(a);
     links.push(a);
   }
 
-  // 从空间站带 #展区 进入：内容渲染完成后再定位
-  if (location.hash) {
-    const hid = decodeURIComponent(location.hash.slice(1));
-    setTimeout(() => warpTo(hid), 160);
+  const hash = location.hash ? decodeURIComponent(location.hash.slice(1)) : "";
+  if (hash) {
+    const hall = document.getElementById(hash);
+    const gid = hall ? ARCHIVE_GROUPS.find((g) => hall.closest("#group-" + g.id))?.id : hash.replace(/^group-/, "");
+    setTimeout(() => { if (gid) warpTo(gid, hall && hall.id !== hash ? hash : null); }, 180);
   } else {
-    const io = new IntersectionObserver((es) => {
-      for (const e of es) if (e.isIntersecting)
-        links.forEach((a) => a.classList.toggle("is-on", a.dataset.hall === e.target.id));
-    }, { rootMargin: "-45% 0px -45% 0px" });
-    BP.halls.forEach((h) => { const n = document.getElementById(h.id); if (n) io.observe(n); });
+    links[0]?.classList.add("is-on");
   }
+  addEventListener("hashchange", () => {
+    const gid = location.hash.replace(/^#group-/, "");
+    if (ARCHIVE_GROUPS.some((g) => g.id === gid)) warpTo(gid);
+  });
 }
 
 /* ---------------- 启动 ---------------- */
@@ -324,19 +343,21 @@ async function boot() {
 
   if (Array.isArray(BP.meta.refsInline) && BP.meta.refsInline.length) REFS = BP.meta.refsInline;
   else if (BP.meta.refs) {
-    try { REFS = await (await fetch(BP.meta.refs)).json(); } catch { REFS = []; }
+    try { REFS = await (await fetch(BP.meta.refs, { cache: "no-cache" })).json(); } catch { REFS = []; }
   }
 
+  const facade = (BP.halls || []).find((h) => h.kind === "facade");
   const main = $("#halls");
-  for (const h of BP.halls) main.append(h.kind === "facade" ? renderFacade(h) : renderHall(h));
+  main.append(renderArchiveIntro(facade));
+  renderArchive(groupedHalls());
 
-  // 馆末说明：自动生成展用 meta.colophon，示范展保留原文
+  // 馆末说明：自动生成展用 meta.colophon，示范展保留原有版本
   const col = $(".footer .colophon-text");
-  if (col && BP.meta.colophon) col.textContent = BP.meta.colophon;
+  if (col) col.textContent = BP.meta.colophon
+    || "完整资料保留论文的原始分厅与全部原文证据；默认阅读路径是四幕科研故事。全部引文可点页码回到论文原页核对，版权归原作者所有。";
   const stamp = $(".footer .colophon-stamp");
-  if (stamp) stamp.innerHTML = `PAPERWORLD · ${BP.meta.mode === "extractive" ? "AUTO EXHIBITION" : "EXHIBITION 00"}<br>${BP.meta.paperLabel || BP.meta.sourceName || "原 PDF"} · ${Object.keys(BP.evidence).length} EVIDENCE · ${BP.halls.length} HALLS`;
+  if (stamp) stamp.textContent = `${Object.keys(BP.evidence).length} 条证据 · ${(BP.halls || []).length} 个原始分厅 · 完整资料`;
 
-  buildRail();
   buildProgress();
   initTheme();
   initTopbar();

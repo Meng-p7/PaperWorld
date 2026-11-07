@@ -4,26 +4,27 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>科研故事 · PaperWorld</title>
-<meta name="description" content="把论文讲成普通人愿意看完的科研故事：为什么研究、有趣的想法、怎么做、效果如何、有什么意义。关键结论可回到原文页码。">
+<meta name="description" content="把论文讲成普通人愿意看完的四幕科研故事：为什么研究、怎么做、效果如何、价值与局限。关键结论可回到原文页码。">
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/exhibition.css">
 <link rel="stylesheet" href="css/studio.css">
 <link rel="stylesheet" href="css/cosmos.css">
 <link rel="stylesheet" href="css/story.css">
+<link rel="stylesheet" href="css/refined.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2306080b'/><path d='M8 22V10l8 7 8-7v12' stroke='%23f2b45c' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
 </head>
 <body class="hall-page story-page">
 
 <header class="topbar">
-  <a class="brand" href="index.html"><b>PaperWorld</b><span class="brand__sub">科研故事</span></a>
+  <a class="brand" href="index.html"><b>PaperWorld</b><span class="brand__sub">科研博物馆</span></a>
   <nav class="topnav">
-    <a href="index.html">宇宙入口</a>
+    <a href="index.html">首页</a>
     <a href="station.html">空间站</a>
     <a href="story.html" class="is-active">科研故事</a>
-    <a href="hall.html">完整展馆</a>
     <a href="parse.html">上传论文</a>
     <a href="core.html">AI Core</a>
+    <a href="about.html">关于</a>
     <button class="iconbtn js-theme" aria-label="切换深浅主题" title="切换深浅主题">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
     </button>
@@ -32,42 +33,39 @@
     </button>
   </nav>
   <div id="mobile-menu" class="mobile-menu" aria-label="移动端导航">
-    <a href="index.html">宇宙入口</a>
+    <a href="index.html">首页</a>
     <a href="station.html">空间站</a>
     <a href="story.html">科研故事</a>
-    <a href="hall.html">完整展馆</a>
     <a href="parse.html">上传论文</a>
     <a href="core.html">AI Core</a>
+    <a href="about.html">关于</a>
   </div>
 </header>
 
 <main class="story-wrap">
   <section class="story-hero">
-    <div class="cosmos-kicker">RESEARCH STORY · 四幕科研故事 · 约 2–3 分钟</div>
+    <div class="cosmos-kicker">四幕科研故事 · 约 2 分钟</div>
     <h1 class="story-hero__title" id="story-title">正在载入…</h1>
     <p class="story-hero__sub" id="story-sub"></p>
-    <div class="story-hero__meta mono" id="story-meta"></div>
+    <div class="story-hero__meta" id="story-meta"></div>
     <p class="story-hero__note" id="story-note"></p>
-    <p class="small dimmer" style="margin-top:10px">主线只讲短故事 + 关键图 + 一个数字；技术细节、完整数据与全部原文证据在每幕的「深入阅读」里展开。</p>
 
     <nav class="act-nav" id="act-nav" aria-label="四幕导航"></nav>
 
-    <div class="row wrap" style="gap:10px;margin-top:22px">
-      <a class="btn" id="enter-hall" href="hall.html">进入完整展馆 →</a>
-      <a class="btn btn--ghost" id="enter-station" href="station.html">回空间站</a>
-      <a class="btn btn--ghost" id="enter-parse" href="parse.html">讲我的论文</a>
+    <div class="story-hero__actions">
+      <a class="text-link" id="enter-station" href="station.html">← 回空间站</a>
+      <a class="text-link" id="enter-parse" href="parse.html">讲我的论文</a>
     </div>
   </section>
 
-  <div id="story" class="story" data-layer="story"></div>
+  <div id="story" class="story"></div>
+  <div id="story-refs" class="story-refs"></div>
 
   <section class="story-foot">
-    <div class="tag">COLOPHON</div>
-    <p style="max-width:72ch;line-height:1.9">
-      本页「通俗解读 / 技术细节」是策展语，用于降低阅读门槛，不是论文原文；
-      每一幕的结论由下方原文依据承担，点页码标记即可回到 PDF 原页高亮核对。
-      想看完整展厅与互动装置，请进入
-      <a id="foot-hall" href="hall.html" style="color:var(--gold)">完整展馆</a>。
+    <p>
+      通俗解读与技术细节是策展语，不是论文原文；每一幕的结论由原文依据承担，点页码即可回到 PDF 原页核对。
+      完整展厅、互动装置与全部原文页图收在
+      <a id="foot-hall" href="hall.html">完整资料</a>。
     </p>
   </section>
 </main>

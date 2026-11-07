@@ -48,6 +48,8 @@ if cur:
 for e in entries:
     raw = e["raw"]
     raw = re.sub(r"\s+", " ", raw).strip()
+    # 最后一篇参考文献后面可能粘上 APPENDIX 正文；按标题前截断，避免把附录塞进文献。
+    raw = re.split(r"\s+APPENDIX\s+[A-Z]\b", raw, flags=re.IGNORECASE)[0].strip()
     e["raw"] = raw
     years = re.findall(r"\b(19[5-9]\d|20[0-2]\d)\b", raw)
     e["year"] = int(years[-1]) if years else None

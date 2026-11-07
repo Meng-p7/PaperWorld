@@ -3,11 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>空间站 · PaperWorld 展区中枢</title>
-<meta name="description" content="PaperWorld 空间站：选择展区，镜头自动对接，进入科研展馆。">
+<title>空间站 · PaperWorld 四幕科研故事</title>
+<meta name="description" content="走进 PaperWorld 空间站，在四个故事区域之间选择：难题、解法、结果、价值与局限。">
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/cosmos.css">
+<link rel="stylesheet" href="css/refined.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23040711'/><path d='M8 22V10l8 7 8-7v12' stroke='%238ce8ff' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
 </head>
 <body class="cosmos-page">
@@ -16,46 +17,57 @@
   <div class="cosmos-loader__in">
     <div class="cosmos-loader__mark">PaperWorld</div>
     <div class="cosmos-loader__track"><i></i></div>
-    <div class="cosmos-loader__t">正在读取展区索引 · LOADING ZONES</div>
+    <div class="cosmos-loader__t">正在进入空间站</div>
   </div>
 </div>
 
 <canvas id="sky" class="cosmos__layer" aria-hidden="true"></canvas>
 <canvas id="particles" class="cosmos__layer cosmos__particles" aria-hidden="true"></canvas>
 <div class="cosmos__vignette" aria-hidden="true"></div>
-<div class="cosmos__scanlines" aria-hidden="true"></div>
 
 <header class="cosmos-topbar">
-  <a class="brand" href="index.html"><b>PaperWorld</b><span class="brand__sub">STATION / 展区中枢</span></a>
+  <a class="brand" href="index.html"><b>PaperWorld</b><span class="brand__sub">科研博物馆</span></a>
   <nav class="cosmos-nav">
-    <a href="index.html" class="is-keep">← 宇宙入口</a>
+    <a href="index.html">首页</a>
+    <a href="station.html" class="is-active">空间站</a>
+    <a href="story.html">科研故事</a>
     <a href="parse.html">上传论文</a>
-    <a href="about.html">关于 / 方法</a>
-    <span class="cosmos-nav__sep"></span>
-    <button id="direct" class="is-keep"><span class="only-wide">跳过动画 · 直接阅读</span><span class="only-narrow">直接阅读</span></button>
+    <a href="core.html">AI Core</a>
+    <a href="about.html">关于</a>
+    <button id="direct" class="cosmos-nav__go">直接阅读</button>
+    <button id="nav-toggle" class="iconbtn nav-toggle" aria-label="打开导航" aria-expanded="false" aria-controls="mobile-menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
   </nav>
+  <div id="mobile-menu" class="mobile-menu" aria-label="移动端导航">
+    <a href="index.html">首页</a>
+    <a href="station.html">空间站</a>
+    <a href="story.html">科研故事</a>
+    <a href="parse.html">上传论文</a>
+    <a href="core.html">AI Core</a>
+    <a href="about.html">关于</a>
+  </div>
 </header>
 
 <main class="station" id="station">
   <div class="station__head">
-    <div>
-      <div class="cosmos-kicker">STATION 01 · EXHIBITION MAP</div>
-      <h1 class="station__title" id="station-title">正在载入展馆…</h1>
+    <div class="station__intro">
+      <p class="station__eyebrow">四幕科研故事</p>
+      <h1 class="station__title" id="station-title">四幕，读懂这篇论文</h1>
+      <p class="station__paper" id="station-paper"></p>
+      <p class="station__meta" id="station-meta"></p>
     </div>
-    <div class="station__side">
-      <div class="station__meta" id="station-meta">&nbsp;</div>
-      <div class="station__tools" style="margin-top:10px">
-        <button class="cbtn cbtn--ghost cbtn--sm" id="back">返回宇宙</button>
-        <span class="mono micro" id="backend" style="color:var(--cos-ink-3);align-self:center;letter-spacing:.14em"></span>
-      </div>
+    <div class="station__tools">
+      <button class="cbtn cbtn--ghost cbtn--sm" id="back">返回首页</button>
+      <span class="station__backend" id="backend"></span>
     </div>
   </div>
 
   <div class="station-canvas-wrap" id="station3d">
     <canvas id="station-canvas"></canvas>
     <div class="station-plates"></div>
-    <div class="station-hint"><b>拖动转头</b> · 对准舱门后<b>点击推门进入</b> · 滚轮前后移动</div>
-    <div class="station-hint station-hint--m">手指左右滑动转头 · 点舱门进入</div>
+    <div class="station-hint">拖动转头 · 对准舱门后点击进入 · 滚轮前后移动</div>
+    <div class="station-hint station-hint--m">左右滑动转头 · 点舱门进入</div>
   </div>
 
   <div class="station__map" id="map">
@@ -64,9 +76,9 @@
   </div>
 
   <div class="station__legend">
-    <span>点击任意展区 → <b>镜头对接</b> → 进入该展区</span>
-    <span><b>Esc</b> 返回宇宙入口</span>
-    <span>展区与证据数量来自论文蓝图，非静态示例</span>
+    <span>四个舱门对应故事的四幕</span>
+    <span>想跳过着色与动画，可直接阅读</span>
+    <span>结论均可回到论文原页</span>
   </div>
 </main>
 

@@ -2,12 +2,12 @@
  * 把论文讲成普通人愿意看完的故事：四幕主线（难题/解法/结果/价值与局限）+ 每幕可展开深入阅读。
  * 通俗与技术是策展语（界面标注非原文）；结论由原文承担，可点开回到 PDF 原页高亮。
  */
-import { el, $, $$, initTheme, initTopbar, initReveal, initMobileNav } from "../core/ui.js";
+import { el, $, initTheme, initTopbar, initReveal, initMobileNav } from "../core/ui.js";
 import { initDrawer, evChip, openEvidence, openPage } from "../core/drawer.js";
 import { loadExhibition } from "../core/store.js";
 import { mountInteractive } from "../interactives.js";
 import { mountGeneric } from "./generic.js";
-import { ALOHA_STORY, buildLocalStory, normalizeActs } from "./stories/aloha.js";
+import { resolveStory } from "./stories/aloha.js";
 
 const qs = new URLSearchParams(location.search);
 const exhibitId = qs.get("e");
@@ -26,17 +26,11 @@ async function resolveBlueprint() {
   catch { return null; }
 }
 
-function resolveStory(bp) {
-  if (bp.story && Array.isArray(bp.story.acts) && bp.story.acts.length) return { ...bp.story, acts: normalizeActs(bp.story.acts), source: "blueprint" };
-  if (bp.meta?.id === "aloha-act-2023") return { ...ALOHA_STORY, source: "curated" };
-  return buildLocalStory(bp);
-}
-
 /* ---------------- 单幕：主线短故事 + 可展开深入阅读 ---------------- */
 function actNode(act, i) {
   const sec = el("section", { class: "act reveal", id: "act-" + act.id });
   const rail = el("div", { class: "act__rail" },
-    el("span", { class: "act__n", text: act.n || `ACT 0${i + 1}` }),
+    el("span", { class: "act__n", text: String(i + 1).padStart(2, "0") }),
     el("i", { class: "act__line" }));
   const body = el("div", { class: "act__body" });
 
@@ -44,14 +38,13 @@ function actNode(act, i) {
   body.append(el("h2", { class: "act__title", text: act.title }));
 
   const figs = act.figures || (act.figure ? [act.figure] : []);
-  for (const f of figs) {
-    if (!f?.src) continue;
-    body.append(el("figure", { class: "act__fig" },
-      el("div", { class: "act__img" },
-        el("img", { src: f.src, alt: f.caption || "", loading: i ? "lazy" : "eager" }),
-        f.page ? el("button", { class: "plate__badge", text: `原文 P.${f.page}`, onclick: () => openPage(f.page) }) : null),
-      f.caption ? el("figcaption", { class: "plate__cap" }, el("span", { class: "fig", text: "FIG." }), f.caption) : null));
-  }
+  const figureNode = (f, lazy = true) => el("figure", { class: "act__fig" },
+    el("div", { class: "act__img" },
+      el("img", { src: f.src, alt: f.caption || "", loading: lazy ? "lazy" : "eager" }),
+      f.page ? el("button", { class: "plate__badge", text: `原文第 ${f.page} 页`, onclick: () => openPage(f.page) }) : null),
+    f.caption ? el("figcaption", { class: "plate__cap" }, f.caption) : null);
+  // 主线每幕最多一张核心图；其余图版收进深入阅读，避免主线变成长图报告。
+  if (figs[0]?.src) body.append(figureNode(figs[0], i > 0));
 
   // 主线：简短通俗故事
   if (act.plain) body.append(el("p", { class: "act__plain-x", text: act.plain }));
@@ -65,7 +58,14 @@ function actNode(act, i) {
     body.append(st);
   }
   // 主线：少量原文证据 chips
-  const mainQuotes = (act.quotes || []).slice(0, 2);
+  // 主线只放最多两条证据；同一页的多条引文合并显示，避免出现重复的 P.3 / P.3。
+  const seenPage = new Set();
+  const mainQuotes = (act.quotes || []).filter((id) => {
+    const page = BP.evidence?.[id]?.page;
+    if (!page || seenPage.has(page)) return false;
+    seenPage.add(page);
+    return true;
+  }).slice(0, 2);
   if (mainQuotes.length) {
     const chips = el("div", { class: "act__chips" }, el("span", { class: "act__chips-l", text: "原文依据" }));
     for (const id of mainQuotes) chips.append(evChip(id));
@@ -76,6 +76,7 @@ function actNode(act, i) {
   const deep = el("details", { class: "act__deep" });
   deep.append(el("summary", { text: "深入阅读 · 技术细节 / 完整数据 / 原文证据" }));
   const deepBody = el("div", { class: "act__deep-body" });
+  for (const f of figs.slice(1)) if (f?.src) deepBody.append(figureNode(f));
   if (act.tech) {
     deepBody.append(el("div", { class: "act__tech" },
       el("span", { class: "editorial__tag", text: "技术细节 · 非原文" }),
@@ -112,12 +113,38 @@ function actNode(act, i) {
   }
   deepBody.append(el("p", { class: "small dimmer" },
     "想看完整展厅、全部实验表格与超参数？",
-    el("a", { href: "hall.html" + suffix, style: "color:var(--gold)", text: "进入完整展馆 →" })));
+    el("a", { href: "hall.html" + suffix, style: "color:var(--gold)", text: "查看完整资料 →" })));
   deep.append(deepBody);
   body.append(deep);
 
   sec.append(rail, body);
   return sec;
+}
+
+/* ---------------- 参考文献：统一放在四幕之后，默认折叠 ---------------- */
+async function renderReferences() {
+  const box = $("#story-refs");
+  if (!box) return;
+  let refs = Array.isArray(BP.meta?.refsInline) ? BP.meta.refsInline : [];
+  if (!refs.length && BP.meta?.refs) {
+    try { refs = await (await fetch(BP.meta.refs, { cache: "no-cache" })).json(); } catch { refs = []; }
+  }
+  const details = el("details", { class: "story-references" });
+  details.append(el("summary", { text: `参考文献与原文档案${refs.length ? ` · ${refs.length} 条` : ""}` }));
+  const body = el("div", { class: "story-references__body" });
+  if (!refs.length) {
+    body.append(el("p", { text: "未在文本层检出结构化参考文献。可在完整资料中逐页查看原文。" }));
+  } else {
+    const list = el("ol", { class: "story-references__list" });
+    for (const r of refs) {
+      const raw = typeof r === "string" ? r : (r.raw || "");
+      if (raw) list.append(el("li", { text: raw }));
+    }
+    body.append(list);
+  }
+  body.append(el("a", { class: "text-link", href: "hall.html" + suffix, text: "打开完整资料与原文页图 →" }));
+  details.append(body);
+  box.append(details);
 }
 
 /* ---------------- 启动 ---------------- */
@@ -146,29 +173,38 @@ async function boot() {
   document.title = `科研故事 · ${BP.meta?.title || "PaperWorld"}`.slice(0, 110);
 
   const facade = (BP.halls || []).find((h) => h.kind === "facade");
-  const title = BP.meta?.title || facade?.title || BP.halls?.[0]?.title || "未命名论文";
-  $("#story-title").textContent = title;
-  $("#story-sub").textContent = STORY.acts[0]?.tagline || "一篇论文，四幕故事 · 约 2–3 分钟";
+  const paperTitle = BP.meta?.title || facade?.title || BP.halls?.[0]?.title || "未命名论文";
+  $("#story-title").textContent = STORY.meta?.titleZh || paperTitle;
+  $("#story-sub").textContent = STORY.meta?.titleZh
+    ? paperTitle
+    : (STORY.acts[0]?.tagline || "一篇论文，四幕故事");
   $("#story-meta").innerHTML =
-    `<b>${STORY.acts.length}</b> 幕故事 · 约 <b>2–3</b> 分钟 · <b>${quoteCount}</b> 条原文引用 · <b>${evCount}</b> 条证据 · ` +
-    (BP.meta?.pages ? `<b>${BP.meta.pages}</b> 页原文` : "");
-  if (STORY.meta?.note) $("#story-note").textContent = STORY.meta.note;
+    `四幕 · 约 <b>2</b> 分钟 · <b>${quoteCount}</b> 条原文引用` +
+    (evCount ? ` · <b>${evCount}</b> 条可核验证据` : "");
+  $("#story-note").textContent = STORY.meta?.note || "通俗讲解与技术细节均为非原文；结论由可回到原页的原文承担。";
 
   const nav = $("#act-nav");
   STORY.acts.forEach((a, i) => {
-    nav.append(el("a", { href: "#act-" + a.id, text: `${a.n || "0" + (i + 1)} ${a.title}` }));
+    nav.append(el("a", { href: "#act-" + a.id, text: a.title || `第 ${i + 1} 幕` }));
   });
 
   const main = $("#story");
   STORY.acts.forEach((a, i) => main.append(actNode(a, i)));
+  await renderReferences();
 
-  $("#enter-hall").href = "hall.html" + suffix;
   $("#enter-station").href = "station.html" + suffix;
   $("#enter-parse").href = "parse.html";
+  $("#foot-hall").href = "hall.html" + suffix;
 
   initTheme();
   initTopbar();
   initReveal();
   initMobileNav();
+
+  // 从空间站的四幕舱门进入时，内容还没生成完就不能靠浏览器原生锚点定位。
+  if (location.hash) {
+    const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (target) requestAnimationFrame(() => target.scrollIntoView({ behavior: "instant", block: "start" }));
+  }
 }
 boot();
