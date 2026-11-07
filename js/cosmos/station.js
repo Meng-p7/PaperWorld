@@ -6,7 +6,6 @@ import { el, $, initMobileNav } from "../core/ui.js";
 import { loadExhibition } from "../core/store.js";
 import { createStarfield } from "./starfield.js";
 import { createStation3D as createLegacyStation } from "./station3d.js";
-import { createStation3D as createCinematicStation } from "./stationCinematic.js";
 
 const qs = new URLSearchParams(location.search);
 const exhibitId = qs.get("e");
@@ -111,7 +110,7 @@ function dock(id, node) {
 }
 
 /* ---------- 第一人称空间站（WebGL），失败则回落到 CSS 走廊 ---------- */
-function mountStation3D(halls) {
+async function mountStation3D(halls) {
   const canvas = $("#station-canvas");
   if (!canvas) return null;
   const doors = halls.map((h, i) => ({
@@ -127,6 +126,8 @@ function mountStation3D(halls) {
   };
   let s3 = null;
   try {
+    // 按需动态加载电影级渲染器（含 three.js），不需要时不付出解析成本
+    const { createStation3D: createCinematicStation } = await import("./stationCinematic.js");
     s3 = createCinematicStation({ canvas, doors, onSelect });
   } catch (err) {
     console.warn("[station] 电影级渲染不可用：", err.message);
@@ -142,6 +143,7 @@ function mountStation3D(halls) {
     $("#map").style.display = "none";
     $("#station3d").classList.add("is-live");
     $("#backend").textContent = s3.kind === "webgl-cinematic" ? "WEBGL2 / CINEMATIC PBR" : "WEBGL / GPU";
+    window.__pwStation = s3; // perf / debug 探针入口
     return s3;
   }
   $("#station3d").style.display = "none";
@@ -181,7 +183,7 @@ initMobileNav();
   } else buildMap(bp);
   if (bp) {
     const halls = (bp.halls || []).filter(Boolean);
-    if (halls.length && !mobile) mountStation3D(halls);
+    if (halls.length && !mobile) await mountStation3D(halls);
   }
   const start = performance.now();
   setTimeout(() => $("#loader").classList.add("is-done"), Math.max(0, 420 - (performance.now() - start)));

@@ -37,13 +37,13 @@ function canvasTex(size, draw, { srgb = true, repeat = [1, 1] } = {}) {
 function hullTextures() {
   const rnd = (seed => () => (seed = (seed * 16807) % 2147483647) / 2147483647)(42);
   const albedo = canvasTex(512, (g, s) => {
-    g.fillStyle = "#2b3547"; g.fillRect(0, 0, s, s);
+    g.fillStyle = "#9aa6b4"; g.fillRect(0, 0, s, s);
     for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
-      const v = 40 + Math.floor(rnd() * 14);
-      g.fillStyle = `rgb(${v},${v + 8},${v + 20})`;
+      const v = 150 + Math.floor(rnd() * 26);
+      g.fillStyle = `rgb(${v},${v + 6},${v + 12})`;
       g.fillRect(x * 128 + 3, y * 128 + 3, 122, 122);
     }
-    g.strokeStyle = "#161d29"; g.lineWidth = 3;
+    g.strokeStyle = "#414c5a"; g.lineWidth = 3;
     for (let i = 0; i <= 4; i++) {
       g.beginPath(); g.moveTo(i * 128, 0); g.lineTo(i * 128, s); g.stroke();
       g.beginPath(); g.moveTo(0, i * 128); g.lineTo(s, i * 128); g.stroke();
@@ -94,13 +94,13 @@ function hullTextures() {
 
 function floorTexture() {
   return canvasTex(512, (g, s) => {
-    g.fillStyle = "#1b2339"; g.fillRect(0, 0, s, s);
+    g.fillStyle = "#6b7889"; g.fillRect(0, 0, s, s);
     for (let y = 0; y < s; y += 16) {
-      g.fillStyle = y % 32 ? "#232c44" : "#1a2236";
+      g.fillStyle = y % 32 ? "#7a8798" : "#667384";
       g.fillRect(0, y, s, 12);
-      g.fillStyle = "#10161f"; g.fillRect(0, y + 12, s, 4);
+      g.fillStyle = "#3c4659"; g.fillRect(0, y + 12, s, 4);
     }
-    g.fillStyle = "#2a3450";
+    g.fillStyle = "#8b98a9";
     for (let x = 0; x < s; x += 128) g.fillRect(x, 0, 6, s);
     for (let i = 0; i < 120; i++) {
       g.fillStyle = `rgba(160,180,210,${0.02 + Math.random() * 0.05})`;
@@ -124,6 +124,85 @@ function signTexture(num, title) {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   return t;
+}
+
+/* 把多个带变换的几何合并为一个（保留索引以复用顶点），可选逐件顶点色。
+ * 用于舱门静态件合批：减少 draw call 与几何体数量，仍保留逐门视锥剔除。 */
+function mergeGeos(items) {
+  const pos = [], nor = [], uv = [], col = [], idx = [];
+  const v = new THREE.Vector3(), n = new THREE.Vector3(), nm = new THREE.Matrix3();
+  let offset = 0;
+  for (const { geo, matrix, color } of items) {
+    nm.getNormalMatrix(matrix);
+    const p = geo.attributes.position, no = geo.attributes.normal, u = geo.attributes.uv;
+    const c = color || [1, 1, 1];
+    for (let i = 0; i < p.count; i++) {
+      v.fromBufferAttribute(p, i).applyMatrix4(matrix); pos.push(v.x, v.y, v.z);
+      n.fromBufferAttribute(no, i).applyMatrix3(nm).normalize(); nor.push(n.x, n.y, n.z);
+      uv.push(u ? u.getX(i) : 0, u ? u.getY(i) : 0);
+      col.push(c[0], c[1], c[2]);
+    }
+    if (geo.index) {
+      for (let i = 0; i < geo.index.count; i++) idx.push(geo.index.getX(i) + offset);
+    } else {
+      for (let i = 0; i < p.count; i++) idx.push(i + offset);
+    }
+    offset += p.count;
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
+  out.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+  out.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+  out.setIndex(idx);
+  return out;
+}
+
+/* 铭牌图集：n 块铭牌画进一张 512×(128n) 贴图，返回纹理与第 i 行的 UV 映射。 */
+function signAtlas(doors) {
+  const n = doors.length, rowH = 64;
+  const c = document.createElement("canvas");
+  c.width = 512; c.height = rowH * n;
+  const g = c.getContext("2d");
+  doors.forEach((d, i) => {
+    g.save(); g.translate(0, i * rowH);
+    g.fillStyle = "#05070c"; g.fillRect(0, 0, 512, rowH);
+    g.strokeStyle = "#f2b45c"; g.lineWidth = 3; g.strokeRect(4, 4, 504, rowH - 8);
+    g.fillStyle = "#f2b45c"; g.font = "600 22px monospace"; g.textBaseline = "middle";
+    g.fillText(d.num, 14, 20);
+    g.fillStyle = "#dfe9f5"; g.font = "500 16px sans-serif";
+    g.fillText((d.title || "").slice(0, 12), 14, 44);
+    g.fillStyle = "#66d9e8";
+    for (let x = 400; x < 496; x += 6) g.fillRect(x, 10, (x % 12) ? 2 : 4, rowH - 20);
+    g.restore();
+  });
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return { texture: t, mapV: (i, v) => (1 - (i + 1) / n) + v / n };
+}
+
+/* 全息壁板图形：分子网络 + 网格 + 刻度，黑底 additive。 */
+function holoPanelTexture(seed) {
+  return canvasTex(256, (g, s) => {
+    g.fillStyle = "#02060c"; g.fillRect(0, 0, s, s);
+    const rnd = (sd => () => (sd = (sd * 16807) % 2147483647) / 2147483647)(seed);
+    g.strokeStyle = "rgba(60,180,220,0.25)"; g.lineWidth = 1;
+    for (let x = 0; x < s; x += 16) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, s); g.stroke(); }
+    for (let y = 0; y < s; y += 16) { g.beginPath(); g.moveTo(0, y); g.lineTo(s, y); g.stroke(); }
+    const nodes = Array.from({ length: 26 }, () => [rnd() * s, rnd() * s]);
+    g.strokeStyle = "rgba(90,220,255,0.7)"; g.lineWidth = 1;
+    for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
+      const d = Math.hypot(nodes[i][0] - nodes[j][0], nodes[i][1] - nodes[j][1]);
+      if (d < 55) { g.beginPath(); g.moveTo(nodes[i][0], nodes[i][1]); g.lineTo(nodes[j][0], nodes[j][1]); g.stroke(); }
+    }
+    for (const [x, y] of nodes) {
+      g.fillStyle = "rgba(140,240,255,0.95)"; g.beginPath(); g.arc(x, y, 2, 0, 7); g.fill();
+      g.strokeStyle = "rgba(90,220,255,0.5)"; g.beginPath(); g.arc(x, y, 4.5, 0, 7); g.stroke();
+    }
+    g.fillStyle = "rgba(120,230,255,0.8)"; g.font = "10px monospace";
+    g.fillText("MOLECULAR / STRUCTURE", 8, 12);
+    g.fillText("SYNC 98.2%", 8, s - 8);
+  }, { srgb: true });
 }
 
 /* ================= 几何装配 ================= */
@@ -205,59 +284,121 @@ function buildStation(scene, doors, mats) {
   pillars.instanceMatrix.needsUpdate = true; pilLights.instanceMatrix.needsUpdate = true;
   pillars.castShadow = true; group.add(pillars, pilLights);
 
-  /* --- 展区舱门 --- */
+  /* --- 展区舱门（静态件按材质合批，逐门保留视锥剔除）--- */
+  const geoCache = new Map();
+  const box = (w, h, d) => { const k = `b${w},${h},${d}`; if (!geoCache.has(k)) geoCache.set(k, new THREE.BoxGeometry(w, h, d)); return geoCache.get(k); };
+  const plane = (w, h) => { const k = `p${w},${h}`; if (!geoCache.has(k)) geoCache.set(k, new THREE.PlaneGeometry(w, h)); return geoCache.get(k); };
+  const atlas = signAtlas(doors);
+  const signMat = new THREE.MeshStandardMaterial({ map: atlas.texture, emissive: 0xffffff, emissiveMap: atlas.texture, emissiveIntensity: 1.1, metalness: 0.2, roughness: 0.6 });
+  const emisMat = new THREE.MeshBasicMaterial({ vertexColors: true, color: 0xffffff });
+  const signItems = [];
   const doorMeta = doors.map((d, idx) => {
-    const g = new THREE.Group();
     const th = d.theta;
     const x = Math.sin(th) * (R - 1.6), z = Math.cos(th) * (R - 1.6);
-    g.position.set(x, 0, z); g.rotation.y = th;
+    const doorM = new THREE.Matrix4().compose(
+      new THREE.Vector3(x, 0, z),
+      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), th),
+      new THREE.Vector3(1, 1, 1));
     const w = 1.55, h = 2.75;
-    const add = (geo, mat, px, py, pz, cast = false) => {
-      const m = new THREE.Mesh(geo, mat); m.position.set(px, py, pz); m.castShadow = cast; g.add(m); return m;
+    const buckets = { hull: [], frame: [], door: [], emis: [], hazard: [] };
+    const put = (bucket, geo, px, py, pz, color = null, ry = 0, rx = 0) => {
+      const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, 0));
+      const local = new THREE.Matrix4().compose(new THREE.Vector3(px, py, pz), q, new THREE.Vector3(1, 1, 1));
+      buckets[bucket].push({ geo, matrix: doorM.clone().multiply(local), color });
     };
-    add(new THREE.BoxGeometry(w * 2 + 0.8, h + 0.9, 0.3), mats.hull, 0, (h + 0.9) / 2, 0.5);
-    add(new THREE.BoxGeometry(0.34, h + 0.5, 0.5), mats.frame, -w - 0.2, (h + 0.5) / 2, 0.1, true);
-    add(new THREE.BoxGeometry(0.34, h + 0.5, 0.5), mats.frame, w + 0.2, (h + 0.5) / 2, 0.1, true);
-    add(new THREE.BoxGeometry(w * 2 + 0.8, 0.4, 0.5), mats.frame, 0, h + 0.35, 0.1, true);
-    add(new THREE.BoxGeometry(w - 0.04, h, 0.12), mats.door, -w / 2, h / 2 + 0.1, 0.28);
-    add(new THREE.BoxGeometry(w - 0.04, h, 0.12), mats.door, w / 2, h / 2 + 0.1, 0.28);
-    add(new THREE.BoxGeometry(0.05, h, 0.14), mats.emissive(0x66d9e8, 0.7), 0, h / 2 + 0.1, 0.28);
-    for (let k = 0; k < 3; k++) add(new THREE.BoxGeometry(w * 2 - 0.1, 0.08, 0.16), mats.frame, 0, 0.7 + k * 0.9, 0.3);
-    add(new THREE.BoxGeometry(0.06, h, 0.06), mats.emissive(0xf2b45c, 1.0), -w - 0.02, h / 2 + 0.1, -0.05);
-    add(new THREE.BoxGeometry(0.06, h, 0.06), mats.emissive(0xf2b45c, 1.0), w + 0.02, h / 2 + 0.1, -0.05);
-    add(new THREE.BoxGeometry(w * 2, 0.06, 0.06), mats.emissive(0xf2b45c, 1.0), 0, h + 0.12, -0.05);
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(w * 2, w * 0.5), mats.sign(d.num, d.title));
-    sign.position.set(0, h + 0.85, -0.1); sign.rotation.y = Math.PI; g.add(sign);
-    add(new THREE.BoxGeometry(w * 2 + 0.6, 0.16, 1.4), mats.frame, 0, 0.08, -0.8);
-    const hazard = new THREE.Mesh(new THREE.PlaneGeometry(w * 2 + 0.4, 0.5), mats.hazard);
-    hazard.rotation.x = -Math.PI / 2; hazard.position.set(0, 0.17, -1.1); g.add(hazard);
-    add(new THREE.BoxGeometry(0.1, 0.5, 0.1), mats.emissive(idx % 2 ? 0x6fe3a5 : 0x66d9e8, 1.2), -w - 0.45, 1.5, -0.1);
+    put("hull", box(w * 2 + 0.8, h + 0.9, 0.3), 0, (h + 0.9) / 2, 0.5);
+    put("frame", box(0.34, h + 0.5, 0.5), -w - 0.2, (h + 0.5) / 2, 0.1);
+    put("frame", box(0.34, h + 0.5, 0.5), w + 0.2, (h + 0.5) / 2, 0.1);
+    put("frame", box(w * 2 + 0.8, 0.4, 0.5), 0, h + 0.35, 0.1);
+    put("door", box(w - 0.04, h, 0.12), -w / 2, h / 2 + 0.1, 0.28);
+    put("door", box(w - 0.04, h, 0.12), w / 2, h / 2 + 0.1, 0.28);
+    const cyan = new THREE.Color(0x66d9e8).multiplyScalar(0.7);
+    put("emis", box(0.05, h, 0.14), 0, h / 2 + 0.1, 0.28, [cyan.r, cyan.g, cyan.b]);
+    for (let k = 0; k < 3; k++) put("frame", box(w * 2 - 0.1, 0.08, 0.16), 0, 0.7 + k * 0.9, 0.3);
+    const gold = new THREE.Color(0xf2b45c);
+    put("emis", box(0.06, h, 0.06), -w - 0.02, h / 2 + 0.1, -0.05, [gold.r, gold.g, gold.b]);
+    put("emis", box(0.06, h, 0.06), w + 0.02, h / 2 + 0.1, -0.05, [gold.r, gold.g, gold.b]);
+    put("emis", box(w * 2, 0.06, 0.06), 0, h + 0.12, -0.05, [gold.r, gold.g, gold.b]);
+    put("frame", box(w * 2 + 0.6, 0.16, 1.4), 0, 0.08, -0.8);
+    put("hazard", plane(w * 2 + 0.4, 0.5), 0, 0.17, -1.1, null, 0, -Math.PI / 2);
+    const st = new THREE.Color(idx % 2 ? 0x6fe3a5 : 0x66d9e8).multiplyScalar(1.2);
+    put("emis", box(0.1, 0.5, 0.1), -w - 0.45, 1.5, -0.1, [st.r, st.g, st.b]);
+    const sg = plane(w * 2, w * 0.5).clone();
+    const uvA = sg.attributes.uv;
+    for (let i2 = 0; i2 < uvA.count; i2++) uvA.setY(i2, atlas.mapV(idx, uvA.getY(i2)));
+    const slocal = new THREE.Matrix4().compose(
+      new THREE.Vector3(0, h + 0.85, -0.1),
+      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI),
+      new THREE.Vector3(1, 1, 1));
+    signItems.push({ geo: sg, matrix: doorM.clone().multiply(slocal) });
+    const g = new THREE.Group();
+    const mk = (bucket, mat, cast) => {
+      if (!buckets[bucket].length) return;
+      const m = new THREE.Mesh(mergeGeos(buckets[bucket]), mat); m.castShadow = cast; g.add(m);
+    };
+    mk("hull", mats.hull, false);
+    mk("frame", mats.frame, true);
+    mk("door", mats.door, false);
+    mk("emis", emisMat, false);
+    mk("hazard", mats.hazard, false);
     group.add(g);
     return { ...d, theta: th, pos: [x, 5.3, z], center: [x, 1.6, z], group: g };
   });
+  group.add(new THREE.Mesh(mergeGeos(signItems), signMat));
 
-  /* --- 中央全息台 --- */
+  /* --- 中央展舱：玻璃罩 + 旋转涡扇展品 + 全息环 --- */
   const holo = new THREE.Group();
   const ped = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.8, 0.5, 32), mats.frame);
   ped.position.y = 0.25; ped.castShadow = true; holo.add(ped);
   const pedRing = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.05, 8, 48), mats.emissive(0x66d9e8, 1.0));
   pedRing.rotation.x = Math.PI / 2; pedRing.position.y = 0.52; holo.add(pedRing);
-  const holoMat = (c, o) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false });
-  const globe = new THREE.Mesh(new THREE.IcosahedronGeometry(0.85, 1), holoMat(new THREE.Color(0.12, 0.7, 0.95), 0.4));
-  globe.material.wireframe = true; globe.position.y = 3.2; holo.add(globe);
-  const ring1 = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.02, 6, 64), holoMat(new THREE.Color(0.15, 0.8, 1.1), 0.5));
-  ring1.position.y = 3.2; ring1.rotation.x = Math.PI / 2.4; holo.add(ring1);
-  const ring2 = ring1.clone(); ring2.rotation.x = -Math.PI / 2.6; ring2.rotation.y = 0.6; holo.add(ring2);
+  // 玻璃罩（薄透明高光壳，不用 transmission 以省一次透射 pass）
+  const glass = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.45, 1.45, 3.0, 40, 1, true),
+    new THREE.MeshPhysicalMaterial({ color: 0xbfe8ff, transparent: true, opacity: 0.10, roughness: 0.06, metalness: 0, side: THREE.DoubleSide, envMapIntensity: 1.6, depthWrite: false }));
+  glass.position.y = 2.0; holo.add(glass);
+  for (const yy of [0.55, 3.5]) {
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(1.45, 0.05, 8, 48), mats.emissive(0x9fe8f5, 1.2));
+    rim.rotation.x = Math.PI / 2; rim.position.y = yy; holo.add(rim);
+  }
+  // 涡扇展品： nacelle +  instanced 叶片 + spinner
+  const engine = new THREE.Group(); engine.position.y = 2.0; holo.add(engine);
+  const nacelle = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 1.5, 28, 1, true), mats.pipe);
+  nacelle.rotation.x = Math.PI / 2; engine.add(nacelle);
+  const fan = new THREE.Group(); fan.position.z = 0.55; engine.add(fan);
+  const bladeGeo = new THREE.BoxGeometry(0.10, 0.78, 0.03);
+  const blades = new THREE.InstancedMesh(bladeGeo, mats.pipe, 18);
+  const bm = new THREE.Matrix4(), bq = new THREE.Quaternion(), bp = new THREE.Vector3(), bs = new THREE.Vector3(1, 1, 1);
+  for (let i = 0; i < 18; i++) {
+    const a = (i / 18) * Math.PI * 2;
+    bq.setFromEuler(new THREE.Euler(0, 0.5, a));
+    bp.set(Math.cos(a) * 0.45, Math.sin(a) * 0.45, 0);
+    bm.compose(bp, bq, bs); blades.setMatrixAt(i, bm);
+  }
+  blades.instanceMatrix.needsUpdate = true; fan.add(blades);
+  const spinner = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.5, 20), mats.pipe);
+  spinner.rotation.x = Math.PI / 2; spinner.position.z = 0.3; fan.add(spinner);
   group.add(holo);
 
-  return { group, doorMeta, holo: { globe, ring1, ring2 } };
+  /* --- 全息壁板（门间墙面，分子/网格图形；共享一张贴图）--- */
+  const holoTex = holoPanelTexture(1000);
+  const holoPanelMat = new THREE.MeshBasicMaterial({ map: holoTex });
+  doors.forEach((d, i) => {
+    const th = d.theta + Math.PI / doors.length;
+    const panel = new THREE.Mesh(plane(4.2, 2.4), holoPanelMat);
+    panel.position.set(Math.sin(th) * (R - 0.6), 2.8, Math.cos(th) * (R - 0.6));
+    panel.rotation.y = th + Math.PI;
+    group.add(panel);
+  });
+
+  return { group, doorMeta, holo: { fan } };
 }
 
 /* ================= 体积光锥 ================= */
 function lightCone(radius, height, color, intensity) {
   const geo = new THREE.ConeGeometry(radius, height, 24, 1, true);
   const mat = new THREE.ShaderMaterial({
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
     uniforms: { uColor: { value: new THREE.Color(color) }, uInt: { value: intensity }, uTime: { value: 0 } },
     vertexShader: `varying vec2 vUv; varying vec3 vN; varying vec3 vW;
       void main(){ vUv=uv; vN=normalize(normalMatrix*normal); vec4 wp=modelMatrix*vec4(position,1.0); vW=wp.xyz;
@@ -328,6 +469,12 @@ export function createStation3D({ canvas, doors, onSelect }) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.NoToneMapping;
+  renderer.info.autoReset = false; // 累计一帧内所有 pass 的 draw call
+  const tCreate = performance.now();
+  let firstFrameMs = 0;
+  const gl = renderer.getContext();
+  const dbgExt = gl.getExtension("WEBGL_debug_renderer_info");
+  const gpuString = dbgExt ? gl.getParameter(dbgExt.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x04060b);
@@ -353,14 +500,19 @@ export function createStation3D({ canvas, doors, onSelect }) {
   /* --- 材质 --- */
   const tex = hullTextures();
   const mats = {
-    hull: new THREE.MeshStandardMaterial({ map: tex.albedo, bumpMap: tex.bump, bumpScale: 0.6, roughnessMap: tex.rough, metalness: 0.82, roughness: 0.6, envMapIntensity: 0.9 }),
+    hull: new THREE.MeshStandardMaterial({ map: tex.albedo, bumpMap: tex.bump, bumpScale: 0.6, roughnessMap: tex.rough, metalness: 0.5, roughness: 0.5, envMapIntensity: 0.8 }),
     frame: new THREE.MeshStandardMaterial({ color: 0x39445c, metalness: 0.85, roughness: 0.5, envMapIntensity: 1.1 }),
     pipe: new THREE.MeshStandardMaterial({ color: 0x6a7688, metalness: 0.9, roughness: 0.45, envMapIntensity: 1.2 }),
     door: new THREE.MeshStandardMaterial({ color: 0x1c2434, metalness: 0.85, roughness: 0.45, bumpMap: tex.bump, bumpScale: 0.3, envMapIntensity: 0.8 }),
-    floor: new THREE.MeshStandardMaterial({ map: floorTexture(), metalness: 0.7, roughness: 0.5, envMapIntensity: 0.7 }),
+    floor: new THREE.MeshStandardMaterial({ map: floorTexture(), metalness: 0.55, roughness: 0.28, envMapIntensity: 1.2 }),
     ceil: new THREE.MeshStandardMaterial({ color: 0x141b28, metalness: 0.6, roughness: 0.7 }),
     hazard: new THREE.MeshStandardMaterial({ color: 0x2a2f3a, metalness: 0.4, roughness: 0.8 }),
-    emissive: (hex, inten) => new THREE.MeshBasicMaterial({ color: new THREE.Color(hex).multiplyScalar(inten) }),
+    emissive: (hex, inten) => {
+      const k = hex + ":" + inten;
+      if (!mats._emiCache) mats._emiCache = new Map();
+      if (!mats._emiCache.has(k)) mats._emiCache.set(k, new THREE.MeshBasicMaterial({ color: new THREE.Color(hex).multiplyScalar(inten) }));
+      return mats._emiCache.get(k);
+    },
     sign: (num, title) => {
       const t = signTexture(num, title);
       return new THREE.MeshStandardMaterial({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 1.1, metalness: 0.2, roughness: 0.6 });
@@ -376,10 +528,10 @@ export function createStation3D({ canvas, doors, onSelect }) {
   const built = buildStation(scene, doors, mats);
 
   /* --- 灯光 --- */
-  scene.add(new THREE.HemisphereLight(0x33415c, 0x0a0d13, 0.95));
-  const center = new THREE.PointLight(0xffd2a0, 40, 40, 2); center.position.set(0, 5.2, 0); scene.add(center);
-  const cool = new THREE.PointLight(0x7fd8e8, 70, 30, 2); cool.position.set(0, 2.4, 11); scene.add(cool);
-  const key = new THREE.SpotLight(0xbfd8ff, 260, 40, 1.0, 0.7, 1.6);
+  scene.add(new THREE.HemisphereLight(0x9fb4cc, 0x2a3138, 1.25));
+  const center = new THREE.PointLight(0xffd2a0, 18, 40, 2); center.position.set(0, 5.2, 0); scene.add(center);
+  const cool = new THREE.PointLight(0x9fe8f5, 90, 30, 2); cool.position.set(0, 2.4, 11); scene.add(cool);
+  const key = new THREE.SpotLight(0xeaf6ff, 420, 40, 1.0, 0.7, 1.6);
   key.position.set(0, H - 0.4, 0); key.target.position.set(0, 0, 0);
   key.castShadow = true; key.shadow.mapSize.set(1024, 1024); key.shadow.bias = -0.0005;
   scene.add(key, key.target);
@@ -388,40 +540,20 @@ export function createStation3D({ canvas, doors, onSelect }) {
     pl.position.set(d.center[0] * 0.86, 3.2, d.center[2] * 0.86); scene.add(pl);
   });
 
-  /* --- 体积光锥 + 尘埃 --- */
-  const cones = [];
-  built.doorMeta.forEach((d) => {
-    const c = lightCone(1.8, 4.6, 0x9fc8ff, 0.22);
-    c.position.set(d.center[0] * 0.9, H - 2.4, d.center[2] * 0.9); scene.add(c); cones.push(c);
-  });
-  const cc = lightCone(3.2, 6.4, 0xffd9a0, 0.18); cc.position.set(0, H - 3.3, 0); scene.add(cc); cones.push(cc);
+  // 场景静态：首帧正常算阴影，之后冻结（静态烘焙），不再每帧重算 shadow pass
+  let shadowBaked = false;
+  // 实例化批次的包围球需显式计算，视锥剔除才正确
+  built.group.traverse((o) => { if (o.isInstancedMesh) o.computeBoundingSphere(); });
 
-  const dustGeo = new THREE.BufferGeometry();
-  const DN = 260, dp = new Float32Array(DN * 3);
-  for (let i = 0; i < DN; i++) {
-    const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * (R - 2);
-    dp[i * 3] = Math.sin(a) * r; dp[i * 3 + 1] = Math.random() * H; dp[i * 3 + 2] = Math.cos(a) * r;
-  }
-  dustGeo.setAttribute("position", new THREE.BufferAttribute(dp, 3));
-  const dustSprite = canvasTex(64, (g, s) => {
-    const grd = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-    grd.addColorStop(0, "rgba(255,255,255,1)");
-    grd.addColorStop(0.4, "rgba(255,255,255,0.5)");
-    grd.addColorStop(1, "rgba(255,255,255,0)");
-    g.fillStyle = grd; g.fillRect(0, 0, s, s);
-  }, { srgb: false });
-  const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
-    color: 0x9fc8ff, size: 0.06, map: dustSprite, transparent: true, opacity: 0.4,
-    blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
-  }));
-  scene.add(dust);
+  /* 体积光锥 / 尘埃 / 透明全息环在本 MSAA+HalfFloat 组合下产生黑块伪影，
+   * 已移除；氛围改由明亮布光 + 泛光 + 不发光屏幕承担。 */
 
   /* --- 渲染目标 / 后处理 --- */
   const rtOpts = { type: isWebGL2 ? THREE.HalfFloatType : THREE.UnsignedByteType, depthBuffer: true };
-  const rtScene = new THREE.WebGLRenderTarget(2, 2, { ...rtOpts, samples: isWebGL2 ? 4 : 0 });
+  const rtScene = new THREE.WebGLRenderTarget(2, 2, { ...rtOpts, samples: isWebGL2 ? 2 : 0 });
   const rtB1a = new THREE.WebGLRenderTarget(2, 2, rtOpts), rtB1b = new THREE.WebGLRenderTarget(2, 2, rtOpts);
   const rtB2a = new THREE.WebGLRenderTarget(2, 2, rtOpts), rtB2b = new THREE.WebGLRenderTarget(2, 2, rtOpts);
-  const rtS1 = new THREE.WebGLRenderTarget(2, 2, rtOpts), rtS2 = new THREE.WebGLRenderTarget(2, 2, rtOpts);
+  const rtS2 = new THREE.WebGLRenderTarget(2, 2, rtOpts);
   const quadScene = new THREE.Scene();
   const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   const quadGeo = new THREE.PlaneGeometry(2, 2);
@@ -444,7 +576,7 @@ export function createStation3D({ canvas, doors, onSelect }) {
     rtScene.setSize(w, h);
     rtB1a.setSize(w >> 1, h >> 1); rtB1b.setSize(w >> 1, h >> 1);
     rtB2a.setSize(w >> 2, h >> 2); rtB2b.setSize(w >> 2, h >> 2);
-    rtS1.setSize(w >> 2, h >> 2); rtS2.setSize(w >> 2, h >> 2);
+    rtS2.setSize(w >> 2, h >> 2);
     compMat.uniforms.uRes.value.set(w, h);
   }
 
@@ -528,8 +660,15 @@ export function createStation3D({ canvas, doors, onSelect }) {
 
   /* --- 帧循环 --- */
   let fpsAcc = 0, fpsN = 0, qualityChecked = false;
+  let perfFpsT = performance.now(), perfFpsN = 0, perfFps = 0;
+  let perfCpuAcc = 0, perfCpuN = 0, perfCpuMs = 0;
   function frame(now) {
     if (destroyed) return;
+    const cpuT = performance.now();
+    renderer.info.reset();
+    if (!firstFrameMs) firstFrameMs = performance.now() - tCreate;
+    perfFpsN++;
+    if (now - perfFpsT >= 1000) { perfFps = perfFpsN * 1000 / (now - perfFpsT); perfFpsN = 0; perfFpsT = now; }
     const dt = Math.min(0.05, (now - t0) / 1000); t0 = now;
     if (!reduced) bob = Math.sin(now * 0.0006) * 0.045;
     if (docking && dockTo) {
@@ -549,22 +688,19 @@ export function createStation3D({ canvas, doors, onSelect }) {
     camera.lookAt(e[0] + f[0], e[1] + f[1], e[2] + f[2]);
 
     const tt = now * 0.001;
-    built.holo.globe.rotation.y = tt * 0.3; built.holo.globe.rotation.x = Math.sin(tt * 0.2) * 0.2;
-    built.holo.ring1.rotation.z = tt * 0.5; built.holo.ring2.rotation.z = -tt * 0.4;
-    dust.rotation.y = tt * 0.01;
-    cones.forEach((c) => { c.material.uniforms.uTime.value = tt; });
-    center.intensity = 40 + Math.sin(tt * 2.1) * 2;
+    if (built.holo.fan) built.holo.fan.rotation.z = tt * 2.4;
+    center.intensity = 18 + Math.sin(tt * 2.1) * 1.5;
 
     renderer.setRenderTarget(rtScene);
     renderer.render(scene, camera);
+    if (!shadowBaked) { renderer.shadowMap.autoUpdate = false; shadowBaked = true; }
     brightMat.uniforms.tSrc.value = rtScene.texture; runPass(brightMat, rtB1a);
     blurMat.uniforms.tSrc.value = rtB1a.texture; blurMat.uniforms.uDir.value.set(1 / rtB1a.width, 0); runPass(blurMat, rtB1b);
     blurMat.uniforms.tSrc.value = rtB1b.texture; blurMat.uniforms.uDir.value.set(0, 1 / rtB1b.height); runPass(blurMat, rtB1a);
     blurMat.uniforms.tSrc.value = rtB1a.texture; blurMat.uniforms.uDir.value.set(2 / rtB2a.width, 0); runPass(blurMat, rtB2a);
     blurMat.uniforms.tSrc.value = rtB2a.texture; blurMat.uniforms.uDir.value.set(0, 2 / rtB2a.height); runPass(blurMat, rtB2b);
-    // 变形镜头横向光晕
-    blurMat.uniforms.tSrc.value = rtB1a.texture; blurMat.uniforms.uDir.value.set(4 / rtS1.width, 0); runPass(blurMat, rtS1);
-    blurMat.uniforms.tSrc.value = rtS1.texture; blurMat.uniforms.uDir.value.set(9 / rtS2.width, 0); runPass(blurMat, rtS2);
+    // 变形镜头横向光晕（单 pass，复用 half-res 亮部）
+    blurMat.uniforms.tSrc.value = rtB1a.texture; blurMat.uniforms.uDir.value.set(9 / rtS2.width, 0); runPass(blurMat, rtS2);
     compMat.uniforms.tScene.value = rtScene.texture;
     compMat.uniforms.tB1.value = rtB1a.texture;
     compMat.uniforms.tB2.value = rtB2b.texture;
@@ -582,21 +718,64 @@ export function createStation3D({ canvas, doors, onSelect }) {
         if (fpsN / fpsAcc < 34) { renderer.setPixelRatio(1); resize(); }
       }
     }
+    perfCpuAcc += performance.now() - cpuT; perfCpuN++;
+    if (perfCpuN >= 30) { perfCpuMs = perfCpuAcc / perfCpuN; perfCpuAcc = 0; perfCpuN = 0; }
     raf = requestAnimationFrame(frame);
   }
 
   resize();
   raf = requestAnimationFrame(frame);
 
+  // 页面隐藏时停帧，省电省 GPU
+  const onVis = () => {
+    if (document.hidden) cancelAnimationFrame(raf);
+    else if (!destroyed) { t0 = performance.now(); raf = requestAnimationFrame(frame); }
+  };
+  document.addEventListener("visibilitychange", onVis);
+
+  function getPerf() {
+    const texSet = new Set();
+    scene.traverse((o) => {
+      const m = o.material;
+      if (!m) return;
+      for (const k of ["map", "bumpMap", "roughnessMap", "normalMap", "emissiveMap", "alphaMap", "metalnessMap"]) {
+        if (m[k] && m[k].image) texSet.add(m[k]);
+      }
+    });
+    let texBytes = 0;
+    for (const t of texSet) texBytes += (t.image.width || 0) * (t.image.height || 0) * 4;
+    const rts = [rtScene, rtB1a, rtB1b, rtB2a, rtB2b, rtS2];
+    let rtBytes = 0;
+    for (const r of rts) rtBytes += r.width * r.height * 8; // RGBA16F
+    const ri = renderer.info;
+    return {
+      fps: Math.round(perfFps),
+      cpuMs: +perfCpuMs.toFixed(2),
+      loadMs: Math.round(firstFrameMs),
+      calls: ri.render.calls,
+      triangles: ri.render.triangles,
+      points: ri.render.points,
+      textures: ri.memory.textures,
+      geometries: ri.memory.geometries,
+      programs: ri.programs ? ri.programs.length : 0,
+      texBytes, rtBytes,
+      gpu: gpuString, webgl2: isWebGL2,
+      dpr: renderer.getPixelRatio(),
+      res: [canvas.width, canvas.height],
+    };
+  }
+
   return {
     kind: "webgl-cinematic",
     doors: built.doorMeta,
     get focused() { return focused; },
     enter,
+    getPerf,
     destroy() {
       destroyed = true; cancelAnimationFrame(raf);
+      document.removeEventListener("visibilitychange", onVis);
       renderer.dispose(); pmrem.dispose();
-      rtScene.dispose(); rtB1a.dispose(); rtB1b.dispose(); rtB2a.dispose(); rtB2b.dispose(); rtS1.dispose(); rtS2.dispose();
+      rtScene.dispose(); rtB1a.dispose(); rtB1b.dispose(); rtB2a.dispose(); rtB2b.dispose(); rtS2.dispose();
     },
   };
 }
