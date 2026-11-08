@@ -11,6 +11,7 @@
  *   4. 数值装置只画原文出现过的数。
  */
 import { analyze } from "./analyze.js";
+import { buildLocalStory } from "./stories/aloha.js";
 
 const TOPIC_WORDS = [
   ["机器人", /robot|manipulat|arm|gripper|teleop/i],
@@ -55,6 +56,8 @@ export function curate(ex, { sourceName = "上传的论文.pdf", analysis = null
   const date = new Date().toISOString().slice(0, 10);
 
   const dims = A.dimensions.filter((d) => d.count > 0);
+  const type = A.type || { id: "empirical", label: "实验研究", signal: "按通用实验研究组织" };
+  const focus = A.focus || null;
   const halls = [];
 
   /* ---------------- 序厅 ---------------- */
@@ -70,11 +73,11 @@ export function curate(ex, { sourceName = "上传的论文.pdf", analysis = null
     id: "facade", kind: "facade", num: "00",
     kicker: "EXHIBIT 00 · FACADE 序厅",
     title: ex.title,
-    titleZh: `按 ${dims.length} 个研究维度自动规划展区 · 正文全部为原文直引`,
+    titleZh: `按「${type.label}」组织四幕 · ${dims.length} 个研究维度有原文依据 · 正文全部为原文直引`,
     authors: [{ name: (ex.authors || []).length ? ex.authors.join(" · ") : "论文作者", aff: "见原文首页" }],
     venue: `${sourceName} · ${ex.pageCount} 页 · 布展于 ${date}`,
     domain: detectTopics(ex.abstract + " " + ex.title + " " + ex.sentences.slice(0, 40).map((s) => s.text).join(" ")),
-    curator: "这座展馆的平面图不是模板：程序先读完整篇论文，判断它在研究背景、核心问题、创新点、技术路线、实验过程、结果与结论上各有哪些原文依据，再决定建几间展厅、每间摆哪几句。金框里是原文，标了「策展语」的是编辑性文字——两者永不混在一起。点任意页码标记，回到论文原页看高亮。",
+    curator: `程序先判断这是一篇「${type.label}」论文，再按这个类型的研究叙事去组织四幕：${focus ? focus.cues.problem + "、" + focus.cues.solution + "、" + focus.cues.results + "、" + focus.cues.impact : "问题、方法、结果与边界"}。它不会套同一份讲解模板；能放进故事的内容，都先要求在原文里找到依据。金框是原文，标了「策展语」的是编辑性文字，两者永不混在一起。`,
     stats,
     figure: teaser ? {
       src: teaser, page: 1,
@@ -158,23 +161,23 @@ export function curate(ex, { sourceName = "上传的论文.pdf", analysis = null
     id: "auto", title: ex.title, pdf: ex.url, pages: ex.pageCount,
     sourceName, generatedAt: date,
     mode: "extractive",                       // 保持与 1.0 渲染器兼容
-    curation: "dimension-driven/v2",
-    curationLabel: "AI 策展 · 六维度分析",
-    engine: "PaperWorld 2.0 本地六维度分析 + 提取式策展",
+    curation: "type-aware/v3",
+    curationLabel: "AI 策展 · 类型感知",
+    engine: "PaperWorld 4.1 类型感知 + 六维度分析 + 提取式策展",
     refsInline,
     analysis: {
       generatedBy: A.generatedBy, coverage: A.coverage,
-      dimensions: analysisMeta,
+      type, focus, dimensions: analysisMeta,
     },
     plan,
-    colophon: `本展由 PaperWorld 在本地浏览器中依据《${sourceName}》自动生成：先按六个研究维度分析原文语句，再据此规划 ${halls.length} 间展区。全部原文语句逐字取自 PDF 文本层并标注页码；策展语为编辑性文字，已单独标注。论文不上传服务器。`,
+    colophon: `本展由 PaperWorld 在本地浏览器中依据《${sourceName}》自动生成：先识别论文类型，再按六个研究维度分析原文语句，据此规划 ${halls.length} 个原始分厅。全部原文语句逐字取自 PDF 文本层并标注页码；策展语为编辑性文字，已单独标注。论文不上传服务器。`,
   };
 
   return {
     schema: "paperworld.blueprint/v1",
-    generatedBy: "PaperWorld 2.0 dimension-driven extractive curation (verbatim PDF text)",
+    generatedBy: "PaperWorld 4.1 type-aware extractive curation (verbatim PDF text)",
     meta, evidence, halls,
-    __raw: { sections, numbers: (ex.numbers || []).slice(0, 60), pageCount: ex.pageCount },
+    __raw: { sections, numbers: (ex.numbers || []).slice(0, 60), abstract: (ex.abstract || "").slice(0, 1600), figures: figures.map((f) => ({ label: f.label, caption: f.caption.slice(0, 220), page: f.page })), pageCount: ex.pageCount },
   };
 }
 
@@ -206,32 +209,47 @@ export function applyPlan(bp, result) {
 export function applyAIPlan(bp, result) {
   if (!result) return bp;
   const allowed = new Set(Object.keys(bp.evidence || {}));
-  const acts = [];
   const order = ["problem", "solution", "results", "impact"];
   const legacy = { why: "problem", idea: "solution", how: "solution", result: "results", meaning: "impact" };
   const list = (Array.isArray(result.acts) ? result.acts : [])
     .map((a) => (a && typeof a === "object" ? { ...a, id: legacy[a.id] || a.id } : null))
     .filter(Boolean);
+  const local = new Map(buildLocalStory(bp).acts.map((a) => [a.id, a]));
+  const acts = [];
   for (const id of order) {
     const group = list.filter((x) => x.id === id);
-    if (!group.length) continue;
+    if (!group.length) {
+      const fallback = local.get(id);
+      if (fallback) acts.push(fallback);
+      continue;
+    }
     const quotes = [...new Set(group.flatMap((g) => (Array.isArray(g.quoteIds) ? g.quoteIds : [])))].filter((x) => allowed.has(x)).slice(0, 4);
-    const plain = group.map((g) => String(g.plain || "")).filter(Boolean).join(" ").slice(0, 220);
-    const tech = group.map((g) => String(g.tech || "")).filter(Boolean).join(" ").slice(0, 320);
+    const plain = group.map((g) => String(g.plain || "")).filter(Boolean).join(" ").slice(0, 240);
+    const tech = group.map((g) => String(g.tech || "")).filter(Boolean).join(" ").slice(0, 340);
     const title = String(group[0].title || id).slice(0, 40);
     const statSrc = group.find((g) => g.stat?.value)?.stat;
+    const statQuote = statSrc?.quoteId && allowed.has(statSrc.quoteId) ? statSrc.quoteId : quotes[0];
     acts.push({
       id, n: `ACT 0${order.indexOf(id) + 1}`,
       title, tagline: title, plain, tech, quotes, figures: [],
-      stat: statSrc ? { value: String(statSrc.value).slice(0, 24), label: String(statSrc.label || "").slice(0, 40), ev: quotes[0] } : null,
+      stat: statSrc && statQuote ? { value: String(statSrc.value).slice(0, 24), label: String(statSrc.label || "").slice(0, 40), ev: statQuote } : null,
+      ai: true,
     });
   }
-  if (acts.length) {
+  if (acts.some((a) => a.ai)) {
+    const aiCount = acts.filter((a) => a.ai).length;
+    const rejects = Array.isArray(result.rejects) ? result.rejects : [];
+    const statRejects = rejects.filter((x) => /stat-invalid|stat-not-in-quotes/.test(x)).length;
+    const missing = 4 - aiCount;
+    const parts = [];
+    if (missing) parts.push(`${missing} 幕由本地证据补齐`);
+    if (statRejects) parts.push(`${statRejects} 个数字无出处已隐藏`);
     bp.story = {
       acts,
       meta: {
         source: "ai-core",
-        note: `科研故事由 AI Core 后端的模型生成（共 ${acts.reduce((n, a) => n + a.quotes.length, 0)} 条原文引用，均已回查证据表）；讲解文字标为「非原文」。`,
+        titleZh: result.storyTitle || null,
+        note: `AI 策展 · ${aiCount}/4 幕通过引文校验${parts.length ? "；" + parts.join("；") : ""}。讲解非原文，结论请看原文。`,
       },
     };
   }
@@ -247,6 +265,6 @@ export function applyAIPlan(bp, result) {
       hall.blocks.splice(at, 0, { t: "exhibit", title: "AI 策展语 · 模型生成 · 非原文", text: note });
     }
   }
-  bp.meta.llm = { applied: true, message: result.message || "AI Core 后端策展完成" };
+  bp.meta.llm = { applied: acts.some((a) => a.ai), message: result.message || "AI Core 后端策展完成", rejects: result.rejects || [] };
   return bp;
 }

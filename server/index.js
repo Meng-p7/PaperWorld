@@ -225,59 +225,157 @@ function jsonFrom(text) {
   return JSON.parse(clean.slice(a, b + 1));
 }
 
-const CURATE_SYSTEM = `你是 PaperWorld 数字科研博物馆的策展 AI。任务：把一篇学术论文变成普通人愿意探索的科研故事与展区讲解。
+const ACT_IDS = ["problem", "solution", "results", "impact"];
+const ACT_DIMS = {
+  problem: ["background", "question"],
+  solution: ["innovation", "method"],
+  results: ["experiment", "result"],
+  impact: ["limitation"],
+};
 
-你必须只输出一个 JSON 对象，格式：
+const CURATE_SYSTEM_BASE = `你是 PaperWorld 数字科研博物馆的策展 AI。任务：读懂一篇学术论文，把它组织成普通人愿意看、且每一句都能回到原文的四幕科研故事。
+
+你必须只输出一个 JSON 对象，不要 Markdown 代码块，不要解释。格式：
 {
+  "storyTitle": "给这篇论文的一句中文故事标题，≤28字，不用论文原题直译",
   "acts": [
-    { "id": "problem", "title": "为什么这是一个难题", "plain": "通俗解读，≤120字", "tech": "技术细节，≤160字", "quoteIds": ["a001"], "stat": {"value": "示例数字", "label": "这个数字是什么"} }
+    { "id": "problem", "title": "这一幕的标题，≤28字", "plain": "给普通人的通俗解读，45~150字，必须以句号/问号/感叹号收尾", "tech": "技术细节，0~180字", "quoteIds": ["a001"], "stat": {"value": "只允许原文里出现过的数字", "label": "这个数字是什么，≤30字"} }
   ],
   "zones": [
-    { "id": "background", "title": "展区名，≤16字", "note": "展区讲解，≤110字", "quoteIds": ["a002"] }
+    { "id": "background", "title": "分厅名，≤16字", "note": "分厅讲解，≤110字", "quoteIds": ["a002"] }
   ]
 }
 
 硬规则：
-1) acts 必须且只能包含这四幕：problem / solution / results / impact，顺序固定。solution 一幕内同时讲清硬件/装置与算法/方法；results 一幕放实验成绩与关键消融。
-2) plain 是写给没读过论文的人的，口语、有画面感、不用术语堆砌；tech 是给想深挖的人的，可包含术语但仍要克制。
-3) 不得编造任何事实、数值、百分比、实验结论。quoteIds 只能来自输入给你的清单，只能少不能多，也不能改写成新引文。
-4) stat.value 若填数字，必须是输入清单里出现过的数字原文；不确定就留空字符串。
-5) quoteIds 每幕 0~3 个，用最能支撑这一幕的原句。
-6) 不要输出解释、Markdown 代码块或多余文字。`;
+1) acts 最多四个，id 只能为 problem / solution / results / impact，各最多出现一次。四幕是阅读顺序，不是四份模板：标题与讲解必须围绕这篇论文自己的研究问题、方法、证据与边界来写。若某一幕找不到对应维度的原句，就省略该幕，前端会如实显示“未检出”。
+2) 每一幕至少引用 1 条、最多 3 条 quoteIds，且只能来自输入清单。引文与所在幕的维度必须匹配：
+   - problem 只能用 background / question 的原句；
+   - solution 只能用 innovation / method 的原句；
+   - results 只能用 experiment / result 的原句；
+   - impact 只能用 limitation 的原句。
+   如果没有对应维度的原句，就不要生成那一幕——前端会明确显示“未检出”，绝不允许为了凑四幕编造。
+3) plain 是给没读过论文的人看的：先说清这一幕在讲什么，再解释它为什么重要；不要用“本研究”“本文”开头，不要写论文摘要。tech 给愿意深挖的人，可以保留术语。
+4) 不得编造事实、机制、因果、数值、百分比、实验结论。plain / tech / title 中出现的任何数字、百分比、金额、单位，必须逐字来自本幕 quoteIds 的原文；不确定就不要写数字。stat 只能填本幕引文里出现过的单个数字（不要范围、对比或一串数）；没有就省略 stat。
+5) 不要把不同论文的常见套路套上来。先看论文类型、摘要、章节结构与证据分布，再决定每一幕的重点。
+6) quoteIds 不得重复，不得改写、翻译或拼接原文；zones 最多 4 个，id 必须来自输入 dimensions 的 id。
+7) 只输出 JSON。`;
 
-function validatePlan(obj, allowedIds) {
+function curateSystem(input) {
+  const t = input.paperType || {};
+  const f = input.storyFocus || {};
+  const titles = f.titles || {};
+  const cues = f.cues || {};
+  return `${CURATE_SYSTEM_BASE}
+
+这篇论文的类型：${t.label || "未确定"}（${t.id || "unknown"}）。
+本类型四幕应重点回答：
+- problem（${titles.problem || "研究问题"}）：${cues.problem || "问题与已有方法缺口"}
+- solution（${titles.solution || "核心方法"}）：${cues.solution || "方法、装置或研究设计"}
+- results（${titles.results || "主要结果"}）：${cues.results || "证据、实验与结论"}
+- impact（${titles.impact || "价值与局限"}）：${cues.impact || "适用边界、限制与未解决问题"}
+
+写作时优先使用论文自己的术语与章节标题，但用普通人能懂的方式解释。不同类型不要复用同一套措辞：机器人论文要讲清硬件、控制与真实任务；算法论文要讲清改动、基准与代价；材料/机械论文要讲清结构、工艺与实测；理论论文要讲清假设、证明路线与适用范围；综述要讲清组织框架、证据分歧与空白。`;
+}
+
+function normalizeNumToken(t) {
+  return String(t || "").toLowerCase().replace(/[,\s]/g, "").replace(/[–—−]/g, "-");
+}
+function numTokens(text) {
+  const re = /(?:\$|¥|€|£)\s?\d[\d,]*(?:\.\d+)?(?:\s?[kKmMbB])?|\b\d+(?:[.,]\d+)?(?:\s?[–—−-]\s?\d+(?:[.,]\d+)?)?\s?(?:%|hz|khz|mhz|ghz|fps|ms|s|kg|g|mg|mm|cm|km|m|gb|mb|tb|m|b|k|x|×)?\b/gi;
+  return [...String(text || "").matchAll(re)].map((m) => normalizeNumToken(m[0])).filter(Boolean);
+}
+function quoteContainsNumbers(quotes, text) {
+  const pool = new Set(quotes.flatMap(numTokens));
+  return numTokens(text).filter((n) => !pool.has(n));
+}
+
+function validatePlan(obj, allowedIds, ctx = {}) {
   const acts = [];
+  let storyTitle = "";
+  if (typeof obj.storyTitle === "string") {
+    const t = obj.storyTitle.trim().slice(0, 36);
+    if (t.length >= 4 && !quoteContainsNumbers(Object.values(ctx.texts || {}), t).length) storyTitle = t;
+  }
   const zones = [];
   const rejects = [];
-  const pct = /(\d+(?:\.\d+)?)\s?%/;
   const allowed = new Set(allowedIds);
+  const dimOf = ctx.dimOf || {};
+  const texts = ctx.texts || {};
   const legacy = { why: "problem", idea: "solution", how: "solution", result: "results", meaning: "impact" };
+  const seenActs = new Set();
   for (const a of Array.isArray(obj.acts) ? obj.acts : []) {
-    const ids = Array.isArray(a.quoteIds) ? a.quoteIds.filter((x) => typeof x === "string") : [];
     const aid = legacy[a?.id] || a?.id;
-    const bad = !["problem", "solution", "results", "impact"].includes(aid)
-      || typeof a.title !== "string" || a.title.length > 40
-      || typeof a.plain !== "string" || a.plain.length > 220
-      || typeof a.tech !== "string" || a.tech.length > 320
-      || ids.some((x) => !allowed.has(x))
-      || pct.test(a.plain) || pct.test(a.tech);
-    if (bad) { rejects.push(`act:${a?.id || "?"}`); continue; }
-    acts.push({
-      id: aid, title: a.title.trim(), plain: a.plain.trim(), tech: a.tech.trim(),
-      quoteIds: ids, stat: (a.stat && typeof a.stat === "object")
-        ? { value: String(a.stat.value || "").slice(0, 24), label: String(a.stat.label || "").slice(0, 40) }
-        : null,
-    });
+    if (!ACT_IDS.includes(aid)) { rejects.push(`act:${a?.id || "?"}:unknown-id`); continue; }
+    if (seenActs.has(aid)) { rejects.push(`act:${aid}:duplicate`); continue; }
+    const ids = [...new Set(Array.isArray(a.quoteIds) ? a.quoteIds.filter((x) => typeof x === "string") : [])].slice(0, 3);
+    const wrongDim = ids.filter((id) => !allowed.has(id) || !ACT_DIMS[aid].includes(dimOf[id]));
+    if (!ids.length) { rejects.push(`act:${aid}:no-evidence`); continue; }
+    if (wrongDim.length) { rejects.push(`act:${aid}:wrong-dimension:${wrongDim.join(",")}`); continue; }
+    if (typeof a.title !== "string" || !a.title.trim() || a.title.length > 40) { rejects.push(`act:${aid}:title`); continue; }
+    const plainText = typeof a.plain === "string" ? a.plain.trim() : "";
+    if (!plainText || plainText.length < 26 || plainText.length > 240 || !/[。！？.!?…”’"'）)]$/.test(plainText)) {
+      rejects.push(`act:${aid}:plain`);
+      continue;
+    }
+    if (typeof a.tech !== "string" || a.tech.length > 340) { rejects.push(`act:${aid}:tech`); continue; }
+    let quotes = ids.map((id) => String(texts[id] || ""));
+    let tokenPool = new Set(quotes.flatMap(numTokens));
+    // 若讲解里出现引文之外的数字，先在对应幕允许的维度里找一条包含该数字的原句，
+    // 把它补进本幕证据；找不到就拒绝整幕，绝不保留无出处的数字。
+    const supportPool = Object.keys(texts).filter((id) => allowed.has(id) && ACT_DIMS[aid].includes(dimOf[id]));
+    const nums = [...new Set([
+      ...numTokens(a.title), ...numTokens(a.plain), ...numTokens(a.tech),
+    ])];
+    const badTextNums = [];
+    for (const n of nums) {
+      if (tokenPool.has(n)) continue;
+      const found = supportPool.find((id) => !ids.includes(id) && numTokens(texts[id]).includes(n));
+      if (found && ids.length < 4) {
+        ids.push(found);
+        quotes.push(String(texts[found] || ""));
+        tokenPool = new Set(quotes.flatMap(numTokens));
+      } else badTextNums.push(n);
+    }
+    if (badTextNums.length) { rejects.push(`act:${aid}:number-not-in-quotes:${badTextNums.slice(0, 3).join(",")}`); continue; }
+
+    let stat = null;
+    if (a.stat && typeof a.stat === "object" && String(a.stat.value || "").trim()) {
+      const value = String(a.stat.value).trim().slice(0, 18);
+      const label = String(a.stat.label || "").trim().slice(0, 40);
+      const tokens = numTokens(value);
+      const labelBad = quoteContainsNumbers(quotes, label);
+      const strong = /[%$¥€£/×x]|\b\d{2,}\b|(?:hz|khz|mhz|ghz|fps|ms|kg|mg|mm|cm|km|mb|gb|tb)\b/i.test(value);
+      if (tokens.length === 1 && strong) {
+        let owner = ids.find((id) => numTokens(texts[id]).includes(tokens[0]));
+        if (!owner) {
+          const found = supportPool.find((id) => !ids.includes(id) && numTokens(texts[id]).includes(tokens[0]));
+          if (found && ids.length < 4) { ids.push(found); owner = found; quotes.push(String(texts[found] || "")); }
+        }
+        const labelOk = !labelBad.length || labelBad.every((n, i) => tokenPool.has(n) || numTokens(quotes.join(" ")).includes(n));
+        if (owner && labelOk) stat = { value, label, quoteId: owner };
+        else rejects.push(`act:${aid}:stat-invalid:${value.slice(0, 18)}`);
+      } else {
+        rejects.push(`act:${aid}:stat-invalid:${value.slice(0, 18)}`);
+      }
+    }
+
+    seenActs.add(aid);
+    acts.push({ id: aid, title: a.title.trim(), plain: a.plain.trim(), tech: String(a.tech || "").trim(), quoteIds: ids, stat });
   }
+
   for (const z of Array.isArray(obj.zones) ? obj.zones : []) {
-    const ids = Array.isArray(z.quoteIds) ? z.quoteIds.filter((x) => typeof x === "string") : [];
-    const bad = typeof z?.id !== "string" || typeof z?.title !== "string" || z.title.length > 24
-      || typeof z?.note !== "string" || z.note.length > 220
-      || ids.some((x) => !allowed.has(x)) || pct.test(z.note);
-    if (bad) { rejects.push(`zone:${z?.id || "?"}`); continue; }
+    const ids = [...new Set(Array.isArray(z.quoteIds) ? z.quoteIds.filter((x) => typeof x === "string") : [])].slice(0, 3);
+    const why = [];
+    if (typeof z?.id !== "string" || !(ctx.dimIds && ctx.dimIds.has(z.id))) why.push("unknown-id");
+    if (typeof z?.title !== "string" || !z.title.trim() || z.title.length > 24) why.push("title");
+    if (typeof z?.note !== "string" || z.note.length > 220 || z.note.trim().length < 12) why.push("note");
+    if (ids.length === 0) why.push("no-evidence");
+    if (ids.some((x) => !allowed.has(x) || dimOf[x] !== z.id)) why.push("wrong-dimension");
+    if (!why.length && quoteContainsNumbers(ids.map((id) => String(texts[id] || "")), z.note).length) why.push("number-not-in-quotes");
+    if (why.length) { rejects.push(`zone:${z?.id || "?"}:${why.join("+")}`); continue; }
     zones.push({ id: z.id, title: z.title.trim(), note: z.note.trim(), quoteIds: ids });
   }
-  return { acts, zones, rejects };
+  return { acts, zones, rejects, storyTitle };
 }
 
 async function runCurate(task, payload, cfg, apiKey) {
@@ -288,33 +386,107 @@ async function runCurate(task, payload, cfg, apiKey) {
   const allowedIds = sentences.map((s) => s.id);
   if (!sentences.length) throw Object.assign(new Error("没有可策展的原文语句"), { status: 400 });
 
+  const dims = Array.isArray(payload.dimensions) ? payload.dimensions.slice(0, 8) : [];
+  const dimOf = {};
+  const dimIds = new Set(dims.map((d) => d.id));
+  const texts = {};
+  for (const d of dims) {
+    const ids = Array.isArray(d.quoteIds) ? d.quoteIds.filter((x) => typeof x === "string") : [];
+    for (const id of ids) dimOf[id] = d.id;
+  }
+  for (const s of sentences) texts[s.id] = String(s.text || "");
   const input = {
     paperTitle: payload.title || "未命名论文",
     pageCount: payload.pageCount || 0,
-    dimensions: payload.dimensions || [],
-    sentences: sentences.map((s) => ({ id: s.id, page: s.page, section: s.section || "", text: String(s.text || "").slice(0, 220) })),
+    paperType: payload.paperType || null,
+    storyFocus: payload.storyFocus || null,
+    abstract: String(payload.abstract || "").slice(0, 1600),
+    sections: Array.isArray(payload.sections) ? payload.sections.slice(0, 20) : [],
+    figures: Array.isArray(payload.figures) ? payload.figures.slice(0, 8) : [],
+    dimensions: dims.map((d) => ({ id: d.id, name: d.name, count: d.count, quoteCount: (d.quoteIds || []).length })),
+    sentences: sentences.map((s) => ({
+      id: s.id, page: s.page, section: s.section || "", dim: dimOf[s.id] || "",
+      text: String(s.text || "").slice(0, 220),
+    })),
   };
   task.stage = "模型理解论文并规划展馆";
   task.progress = 0.35;
 
   const { content, usage } = await callModel({
     baseUrl: cfg.baseUrl, apiKey, model: cfg.model,
-    messages: [{ role: "system", content: CURATE_SYSTEM }, { role: "user", content: JSON.stringify(input) }],
-    maxTokens: 2200,
+    messages: [{ role: "system", content: curateSystem(input) }, { role: "user", content: JSON.stringify(input) }],
+    maxTokens: 2600,
   });
-  task.stage = "校验模型输出";
+  task.stage = "校验事实、引文与数值";
   task.progress = 0.78;
 
-  const plan = validatePlan(jsonFrom(content), allowedIds);
+  const plan = validatePlan(jsonFrom(content), allowedIds, { dimOf, texts, dimIds });
+  let repaired = false;
+  let totalUsage = usage;
+  const missing = ACT_IDS.filter((id) => !plan.acts.some((a) => a.id === id)
+    && ACT_DIMS[id].some((dim) => (dims.find((d) => d.id === dim)?.quoteIds || []).length > 0));
+  if (missing.length) {
+    repaired = true;
+    task.stage = `修正未通过的 ${missing.length} 幕`;
+    task.progress = 0.9;
+    const allowedFor = {};
+    for (const id of missing) {
+      allowedFor[id] = ACT_DIMS[id].flatMap((dim) => (dims.find((d) => d.id === dim)?.quoteIds || []))
+        .filter((qid) => texts[qid])
+        .slice(0, 8)
+        .map((qid) => ({ id: qid, dim: dimOf[qid], text: String(texts[qid]).slice(0, 220) }));
+    }
+    try {
+      const repairInput = {
+        paperTitle: input.paperTitle,
+        paperType: input.paperType,
+        storyFocus: input.storyFocus,
+        missingActs: missing.map((id) => ({
+          id,
+          title: input.storyFocus?.titles?.[id] || id,
+          focus: input.storyFocus?.cues?.[id] || "",
+          allowedSentences: allowedFor[id],
+        })),
+        alreadyPassed: plan.acts.map((a) => ({ id: a.id, title: a.title })),
+        validationErrors: plan.rejects,
+      };
+      const repairSystem = `${curateSystem(input)}
+
+这是修正轮。只补写 missingActs 里的幕，不要重复已经通过的幕，不要输出 zones。
+每个修正幕必须从该幕的 allowedSentences 里选 1~3 条 quoteIds；没有可用原句就不要输出该幕。
+只输出 {"acts":[...] } 的 JSON。`;
+      const r = await callModel({
+        baseUrl: cfg.baseUrl, apiKey, model: cfg.model,
+        messages: [{ role: "system", content: repairSystem }, { role: "user", content: JSON.stringify(repairInput) }],
+        maxTokens: 1500,
+      });
+      const fixed = validatePlan(jsonFrom(r.content), allowedIds, { dimOf, texts, dimIds });
+      if (!plan.storyTitle && fixed.storyTitle) plan.storyTitle = fixed.storyTitle;
+      for (const a of fixed.acts) {
+        if (!missing.includes(a.id) || plan.acts.some((x) => x.id === a.id)) continue;
+        plan.acts.push(a);
+      }
+      plan.rejects.push(...fixed.rejects.map((x) => "repair:" + x));
+      totalUsage = {
+        prompt_tokens: (usage.prompt_tokens || 0) + (r.usage.prompt_tokens || 0),
+        completion_tokens: (usage.completion_tokens || 0) + (r.usage.completion_tokens || 0),
+        total_tokens: (usage.total_tokens || 0) + (r.usage.total_tokens || 0),
+      };
+    } catch (e) {
+      plan.rejects.push("repair:" + String(e.message || "修正轮失败").slice(0, 120));
+    }
+    plan.acts.sort((a, b) => ACT_IDS.indexOf(a.id) - ACT_IDS.indexOf(b.id));
+  }
   if (!plan.acts.length && !plan.zones.length) {
-    throw Object.assign(new Error("模型输出未通过校验（可能编造了引文或数值），请重试或换模型"), { status: 422 });
+    const why = plan.rejects.length ? `：${plan.rejects.slice(0, 3).join("；")}` : "";
+    throw Object.assign(new Error(`模型输出未通过事实或引文校验${why}`), { status: 422 });
   }
   task.progress = 1;
   task.stage = "完成";
   task.status = "done";
-  task.result = { ...plan, usage, model: cfg.model, provider: cfg.provider };
+  task.result = { ...plan, paperType: input.paperType, usage: totalUsage, repaired, model: cfg.model, provider: cfg.provider };
   persistTask(task);
-  log(`task ${task.id} done: ${plan.acts.length} acts, ${plan.zones.length} zones, ${plan.rejects.length} rejected`);
+  log(`task ${task.id} done: ${plan.acts.length} acts, ${plan.zones.length} zones, ${plan.rejects.length} rejected, repair=${repaired}`);
 }
 
 /* ---------------- 路由 ---------------- */

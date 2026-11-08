@@ -16,8 +16,17 @@ const flash = $("#flash");
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 createStarfield({ sky: $("#sky"), particles: $("#particles"), mode: "entrance" });
-const scene = createEntranceScene({ canvas: $("#entrance-canvas") });
+const canvas = $("#entrance-canvas");
+const scene = createEntranceScene({ canvas });
+if (!scene) canvas.style.display = "none";
 window.__pwEntrance = scene; // 性能探针：window.__pwEntrance.getPerf()
+canvas.addEventListener("pw:scene-lost", () => {
+  scene?.destroy?.();
+  canvas.style.display = "none";
+  const hint = document.querySelector(".entrance__hint");
+  if (hint) hint.textContent = "3D 渲染中断，已切换为静态深空背景 · 仍可进入空间站";
+});
+addEventListener("pagehide", () => scene?.destroy?.(), { once: true });
 
 let leaving = false;
 const cam = createCamera({
@@ -30,6 +39,7 @@ const cam = createCamera({
     hero.style.transform = `translateY(${-k * 34}px)`;
     hero.style.opacity = String(Math.max(0, 1 - k * 1.35));
     bar.style.width = (z * 100).toFixed(1) + "%";
+    document.body.classList.toggle("is-traveling", z > 0.015);
   },
   onStage(stage) {
     document.querySelectorAll(".camstage__i").forEach((n) =>

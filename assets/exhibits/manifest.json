@@ -1,3 +1,5 @@
 {
+  "version": 1,
+  "note": "PaperWorld 4.1 未引入外部 GLB。assets.js 只会加载带有明确 license 字段的资产；当前展示全部为程序化几何。",
   "exhibits": []
 }

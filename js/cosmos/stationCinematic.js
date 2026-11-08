@@ -205,6 +205,28 @@ function holoPanelTexture(seed) {
   }, { srgb: true });
 }
 
+/* 纸页贴图：抽象但能读出标题、段落与图注，不写入任何论文内容 */
+function paperPageTexture() {
+  const c = document.createElement("canvas");
+  c.width = 256; c.height = 180;
+  const g = c.getContext("2d");
+  g.fillStyle = "#f4f0e4"; g.fillRect(0, 0, 256, 180);
+  g.fillStyle = "#d9d3c4"; g.fillRect(14, 14, 228, 1);
+  g.fillStyle = "#6d6759"; g.fillRect(16, 22, 128, 5);
+  g.fillStyle = "#b0a995"; g.fillRect(16, 34, 92, 3);
+  g.fillStyle = "#9e9888";
+  for (let y = 50; y < 130; y += 8) g.fillRect(16, y, 150 + ((y * 13) % 58), 2);
+  g.fillStyle = "#d9d3c4"; g.strokeStyle = "#d9d3c4"; g.lineWidth = 1;
+  g.strokeRect(16, 138, 70, 28);
+  g.fillStyle = "#a8a190";
+  for (let y = 143; y < 164; y += 5) g.fillRect(20, y, 60, 1);
+  g.fillStyle = "#9e9888";
+  for (let y = 138; y < 170; y += 6) g.fillRect(94, y, 142 - ((y * 7) % 46), 2);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return t;
+}
+
 /* ================= 几何装配 ================= */
 function buildStation(scene, doors, mats, seg = SEG) {
   const SEG = seg; // 本厅几何分段随画质档位变化
@@ -362,23 +384,33 @@ function buildStation(scene, doors, mats, seg = SEG) {
     const rim = new THREE.Mesh(new THREE.TorusGeometry(1.45, 0.05, 8, 48), mats.emissive(0x9fe8f5, 1.2));
     rim.rotation.x = Math.PI / 2; rim.position.y = yy; holo.add(rim);
   }
-  // 涡扇展品： nacelle +  instanced 叶片 + spinner
-  const engine = new THREE.Group(); engine.position.y = 2.0; holo.add(engine);
-  const nacelle = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 1.5, 28, 1, true), mats.pipe);
-  nacelle.rotation.x = Math.PI / 2; engine.add(nacelle);
-  const fan = new THREE.Group(); fan.position.z = 0.55; engine.add(fan);
-  const bladeGeo = new THREE.BoxGeometry(0.10, 0.78, 0.03);
-  const blades = new THREE.InstancedMesh(bladeGeo, mats.pipe, 18);
-  const bm = new THREE.Matrix4(), bq = new THREE.Quaternion(), bp = new THREE.Vector3(), bs = new THREE.Vector3(1, 1, 1);
-  for (let i = 0; i < 18; i++) {
-    const a = (i / 18) * Math.PI * 2;
-    bq.setFromEuler(new THREE.Euler(0, 0.5, a));
-    bp.set(Math.cos(a) * 0.45, Math.sin(a) * 0.45, 0);
-    bm.compose(bp, bq, bs); blades.setMatrixAt(i, bm);
+  /* 中央展品：悬浮的「论文档案核心」——层叠纸页 + 全息内核。
+   * 这是通用展品，不假装是某篇论文的硬件；用于给空间站一个与阅读相关的中心。 */
+  const archive = new THREE.Group(); archive.position.y = 2.0; holo.add(archive);
+  const coreGeo = new THREE.IcosahedronGeometry(0.34, 1);
+  const core = new THREE.Mesh(coreGeo, mats.emissive(0x8fe6f6, 1.3));
+  archive.add(core);
+  const coreHalo = new THREE.Mesh(new THREE.SphereGeometry(0.48, 18, 12),
+    new THREE.MeshBasicMaterial({ color: 0x8fe6f6, transparent: true, opacity: 0.09, depthWrite: false }));
+  archive.add(coreHalo);
+  const pageMat = new THREE.MeshStandardMaterial({
+    map: paperPageTexture(),
+    color: 0xffffff, roughness: 0.58, metalness: 0.05,
+    transparent: true, opacity: 0.94, emissive: 0x26333a, emissiveIntensity: 0.32,
+  });
+  const pages = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const page = new THREE.Mesh(new THREE.BoxGeometry(1.02, 0.74, 0.018), pageMat);
+    const y = (i % 2 ? 0.24 : -0.14) + (i === 0 ? 0.05 : 0);
+    page.position.set(Math.sin(a) * 0.56, y, Math.cos(a) * 0.56);
+    page.rotation.y = a + Math.PI;
+    page.rotation.z = (i % 2 ? 1 : -1) * 0.06;
+    page.userData.baseY = y;
+    page.userData.baseRy = page.rotation.y;
+    archive.add(page);
+    pages.push(page);
   }
-  blades.instanceMatrix.needsUpdate = true; fan.add(blades);
-  const spinner = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.5, 20), mats.pipe);
-  spinner.rotation.x = Math.PI / 2; spinner.position.z = 0.3; fan.add(spinner);
   group.add(holo);
 
   /* --- 全息壁板（门间墙面，分子/网格图形；共享一张贴图）--- */
@@ -392,7 +424,7 @@ function buildStation(scene, doors, mats, seg = SEG) {
     group.add(panel);
   });
 
-  return { group, doorMeta, holo: { fan } };
+  return { group, doorMeta, holo: { archive, pages } };
 }
 
 /* ================= 体积光锥 ================= */
@@ -718,6 +750,15 @@ export function createStation3D({ canvas, doors, onSelect }) {
   addEventListener("wheel", (e) => { if (docking) return; moveZ = clamp(moveZ + (e.deltaY > 0 ? -0.55 : 0.55), -9, 3.2); idle = 0; }, { passive: true });
   addEventListener("resize", resize, { passive: true });
 
+  /* WebGL 上下文丢失：停止帧循环，通知外层切到四幕列表，避免黑屏或持续报错 */
+  const onContextLost = (e) => {
+    e.preventDefault();
+    destroyed = true;
+    cancelAnimationFrame(raf);
+    canvas.dispatchEvent(new CustomEvent("pw:scene-lost", { bubbles: true }));
+  };
+  canvas.addEventListener("webglcontextlost", onContextLost, false);
+
   /* --- 帧循环 --- */
   let fpsAcc = 0, fpsN = 0, qualityChecked = false, lowSec = 0, lastTierChange = 0;
   let perfFpsT = performance.now(), perfFpsN = 0, perfFps = 0;
@@ -748,7 +789,12 @@ export function createStation3D({ canvas, doors, onSelect }) {
     camera.lookAt(e[0] + f[0], e[1] + f[1], e[2] + f[2]);
 
     const tt = now * 0.001;
-    if (built.holo.fan) built.holo.fan.rotation.z = tt * 2.4;
+    if (built.holo.archive) built.holo.archive.rotation.y = tt * 0.32;
+    if (built.holo.pages) for (let i = 0; i < built.holo.pages.length; i++) {
+      const p = built.holo.pages[i];
+      p.position.y = p.userData.baseY + Math.sin(tt * 1.1 + i * 0.7) * 0.035;
+      p.rotation.y = p.userData.baseRy + Math.sin(tt * 0.4 + i) * 0.06;
+    }
     center.intensity = 18 + Math.sin(tt * 2.1) * 1.5;
 
     renderer.setRenderTarget(rtScene);
@@ -837,6 +883,7 @@ export function createStation3D({ canvas, doors, onSelect }) {
     getPerf,
     destroy() {
       destroyed = true; cancelAnimationFrame(raf);
+      canvas.removeEventListener("webglcontextlost", onContextLost);
       document.removeEventListener("visibilitychange", onVis);
       renderer.dispose(); pmrem.dispose();
       rtScene.dispose(); rtB1a.dispose(); rtB1b.dispose(); rtB2a.dispose(); rtB2b.dispose(); rtS2.dispose();

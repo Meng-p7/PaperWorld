@@ -100,50 +100,59 @@ export function normalizeActs(acts) {
  * plain/tech 全部是可验证元信息 + 引导语，结论由 quotes 的原文承担。 */
 export function buildLocalStory(bp) {
   const dims = bp.meta?.analysis?.dimensions || [];
-  const plan = bp.meta?.plan || [];
   const byId = new Map(dims.map((d) => [d.id, d]));
+  const focus = bp.meta?.analysis?.focus || null;
+  const typeLabel = bp.meta?.analysis?.type?.label || "研究";
   const pick = (id, n = 3) => (byId.get(id)?.quoteIds || []).slice(0, n);
   const range = (ids) => {
     const pages = ids.map((id) => bp.evidence?.[id]?.page).filter(Boolean);
     return pages.length ? `第 ${Math.min(...pages)}–${Math.max(...pages)} 页` : "未检出";
   };
-  const pagesOf = (ids) => ids.map((id) => bp.evidence?.[id]?.page).filter(Boolean);
 
   const spec = [
-    { id: "problem", dimIds: ["background", "question"], tagline: "这篇论文想解决什么问题" },
-    { id: "solution", dimIds: ["innovation", "method"], tagline: "作者提出了什么不一样的做法" },
-    { id: "results", dimIds: ["result", "experiment"], tagline: "实验与结论" },
-    { id: "impact", dimIds: ["limitation"], tagline: "边界与值得继续看的地方" },
+    { id: "problem", dimIds: ["background", "question"] },
+    { id: "solution", dimIds: ["innovation", "method"] },
+    { id: "results", dimIds: ["result", "experiment"] },
+    { id: "impact", dimIds: ["limitation"] },
   ];
 
   const acts = spec.map((s, i) => {
     const ids = s.dimIds.flatMap((d) => pick(d, 2)).slice(0, 4);
     const count = s.dimIds.reduce((n, d) => n + (byId.get(d)?.count || 0), 0);
+    const title = focus?.titles?.[s.id] || ACT_TITLES[s.id];
+    const cue = focus?.cues?.[s.id] || ACT_TITLES[s.id];
+    const has = ids.length > 0;
     return {
-      id: s.id, n: `ACT 0${i + 1}`, title: ACT_TITLES[s.id], tagline: s.tagline,
-      plain: `这一幕由六维度分析自动归入 ${count} 条原文依据，分布在${range(ids)}。下面每句都是 PDF 原文直引、未经改写，点页码可以回到原页核对。`,
-      tech: `对应维度：${s.dimIds.map((d) => byId.get(d)?.name || d).join(" / ")}。识别到的原文措辞信号：${(s.dimIds.flatMap((d) => byId.get(d)?.signals || []).slice(0, 4).join(" / ")) || "版面位置与信息量"}。`,
-      quotes: ids,
-      figures: [],
-      stat: null,
+      id: s.id, n: `ACT 0${i + 1}`, title,
+      tagline: cue,
+      plain: has
+        ? `这一幕看${typeLabel}论文的「${cue}」。本机从原文里找到 ${count} 条可核对依据，主要在${range(ids)}。下面先给原句，读懂它再决定要不要展开技术细节。`
+        : `本幕没有检出足以支撑「${cue}」的原文依据，因此不生成结论。可以打开完整资料逐页核对；接上 AI Core 后，模型也只能使用已抽取的原文。`,
+      tech: has
+        ? `对应维度：${s.dimIds.map((d) => byId.get(d)?.name || d).join(" / ")}。识别信号：${(s.dimIds.flatMap((d) => byId.get(d)?.signals || []).slice(0, 4).join(" / ")) || "版面位置与信息量"}。这里只描述原文如何被归类，不替论文补充结论。`
+        : "",
+      quotes: ids, figures: [], stat: null,
     };
-  }).filter((a) => a.quotes.length);
+  });
 
   return {
     acts,
     meta: {
       source: "local",
-      note: `本故事由本地六维度分析按四幕组装，共 ${acts.reduce((n, a) => n + a.quotes.length, 0)} 条原文引用；接入 AI Core 后可生成更连贯的叙事。`,
+      titleZh: `一篇${typeLabel}论文，四幕读完`,
+      note: `本地类型分析 · 共 ${acts.reduce((n, a) => n + a.quotes.length, 0)} 条原文引用。接入 AI Core 后可生成更连贯的叙事。`,
     },
   };
 }
 
 /* 全站共享的唯一故事模型：空间站与 story.html 必须读取同一份四幕数据。
  * 旧蓝图可能只有五幕或缺少某一幕；统一归并并补齐四幕，缺证据时明确写“未检出”，不编内容。 */
-export function ensureFourActs(acts) {
+export function ensureFourActs(acts, focus = null) {
   const byId = new Map((Array.isArray(acts) ? acts : []).map((a) => [a.id, a]));
   return ACT_IDS.map((id, i) => byId.get(id) || {
-    id, n: `ACT 0${i + 1}`, title: ACT_TITLES[id], tagline: ACT_TITLES[id],
+    id, n: `ACT 0${i + 1}`,
+    title: focus?.titles?.[id] || ACT_TITLES[id],
+    tagline: focus?.cues?.[id] || ACT_TITLES[id],
     plain: "本幕暂未检出足够的原文依据。可以打开完整资料，回到论文原文继续查看。",
     tech: "", quotes: [], figures: [], stat: null, interact: null,
   });
@@ -173,7 +182,8 @@ export function resolveStory(bp) {
   } else {
     story = buildLocalStory(bp);
   }
-  const acts = ensureFourActs(story.acts);
+  const focus = bp.meta?.analysis?.focus || null;
+  const acts = ensureFourActs(story.acts, focus);
   const pool = collectStoryFigures(bp);
   acts.forEach((a, i) => {
     if (!(a.figures || []).length && pool[i]) a.figures = [pool[i]];

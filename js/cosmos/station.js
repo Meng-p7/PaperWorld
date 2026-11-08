@@ -82,10 +82,15 @@ function dock(id, node) {
 async function mountStation3D(acts) {
   const canvas = $("#station-canvas");
   if (!canvas) return null;
+  const probe = document.createElement("canvas");
+  if (!(probe.getContext("webgl2") || probe.getContext("webgl"))) {
+    $("#station3d").style.display = "none";
+    return null;
+  }
   const doors = acts.map((act, i) => ({
     num: ACT_NUM[i],
     title: (act.title || "").slice(0, 12),
-    theta: (i / acts.length) * Math.PI * 2,
+    theta: (i / acts.length) * Math.PI * 2 + Math.PI / 4,
     id: "act-" + act.id,
     kind: "story",
   }));
@@ -155,7 +160,18 @@ initMobileNav();
   $("#station-meta").textContent = `4 幕 · 约 2 分钟读完 · ${ev} 条可核验证据`;
   document.title = `空间站 · ${paperTitle}`.slice(0, 110);
   buildMap(story);
-  await mountStation3D(story.acts);
+  const s3 = await mountStation3D(story.acts);
+  if (s3) {
+    const canvas = $("#station-canvas");
+    canvas.addEventListener("pw:scene-lost", () => {
+      $("#station3d").style.display = "none";
+      $("#map").style.display = "";
+      $("#backend").textContent = "3D 已中断 · 列表模式";
+      const legend = $(".station__legend");
+      if (legend) legend.textContent = "3D 渲染中断，已切换为四幕列表；阅读与证据不受影响。";
+    }, { once: true });
+    addEventListener("pagehide", () => s3.destroy?.(), { once: true });
+  }
 
   const start = performance.now();
   setTimeout(() => loader.classList.add("is-done"), Math.max(0, 400 - (performance.now() - start)));

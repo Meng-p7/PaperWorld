@@ -21,6 +21,7 @@
 }
 
 body { font-size: var(--fs-body); }
+[hidden] { display: none !important; }
 
 /* ---------- 统一导航 ---------- */
 .cosmos-topbar,
@@ -100,6 +101,9 @@ body { font-size: var(--fs-body); }
 .lead { font-size: 18px; line-height: 1.75; }
 
 /* ---------- 首页：真实外景 + 两个动作 ---------- */
+.home-page #sky { opacity: .58; filter: saturate(.72) brightness(.82); }
+.home-page #particles { opacity: .7; }
+
 .entrance-scene {
   position: fixed; inset: 0; width: 100%; height: 100%;
   z-index: -2; display: block; pointer-events: none;
@@ -257,6 +261,7 @@ body { font-size: var(--fs-body); }
 .act__title { font-size: clamp(27px, 3.2vw, 38px); margin-top: 8px; max-width: 24ch; }
 .act__fig { margin-top: 26px; border-radius: 10px; box-shadow: none; background: #f6f4ef; }
 .act__img img { max-height: 440px; }
+.act__plain-tag { margin-top: 20px; font-size: 14px; color: var(--ink-3); }
 .act__plain-x { font-size: 18px; line-height: 1.9; color: var(--ink-2); margin-top: 22px; max-width: 62ch; }
 .act__stat { margin-top: 22px; padding: 14px 0; gap: 12px; max-width: 62ch; }
 .act__stat-v { font-family: var(--font-display); font-size: clamp(30px, 4vw, 42px); }
@@ -376,7 +381,9 @@ body { font-size: var(--fs-body); }
 }
 .triad__t { font-size: 18px; }
 .triad__x { font-size: 15px; line-height: 1.8; }
-.uploader { border-radius: 12px; padding: 34px; }
+.uploader { border-radius: 12px; padding: 34px; transition: opacity .2s, border-color .2s; }
+.uploader.is-busy { opacity: .72; border-color: var(--gold-line); }
+.uploader button:disabled { opacity: .55; cursor: progress; }
 .uploader h2 { font-size: 24px; }
 .uploader p { font-size: 16px; line-height: 1.85; }
 .uploader__hint { font-size: 14px; }
@@ -411,6 +418,12 @@ body { font-size: var(--fs-body); }
 .core-wrap { padding-top: 100px; }
 .core-hero__title { font-size: clamp(34px, 4.4vw, 52px); }
 .core-hero__sub { font-size: 17px; line-height: 1.9; }
+.core-note {
+  margin: 14px 0 0; padding: 12px 16px; max-width: 76ch;
+  border-left: 2px solid var(--line-strong); background: rgba(255,255,255,.035);
+  color: var(--cos-ink-3); font-size: 14px; line-height: 1.8;
+}
+.core-note .mono { color: var(--cos-ink-2); }
 .core-grid { gap: 14px; }
 .core-card { border-radius: 10px; padding: 24px; border-color: var(--line); background: var(--surface); }
 .core-card__h h2 { font-size: 22px; }
@@ -450,6 +463,11 @@ body { font-size: var(--fs-body); }
     width: calc(100% - 32px); padding: 84px 0 18px; justify-content: flex-end;
     padding-bottom: 26px;
   }
+  .entrance-scene {
+    transform: translateY(-128px);
+    transition: transform .6s var(--ease-out);
+  }
+  .home-page.is-traveling .entrance-scene { transform: none; }
   .entrance__body > * { max-width: none; }
   .entrance__title { font-size: clamp(42px, 12.5vw, 60px); }
   .entrance__sub { font-size: 16px; margin-top: 16px; max-width: 40ch; }

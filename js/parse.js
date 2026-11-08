@@ -5,7 +5,7 @@ import { el, $, initTheme, initTopbar, initMobileNav } from "./core/ui.js";
 import { extractPdf } from "./engine/extract.js";
 import { analyze } from "./engine/analyze.js";
 import { curate, applyAIPlan } from "./engine/curate.js";
-import { getCoreLink, submitCurate, waitTask } from "./engine/ai.js";
+import { getCoreLink, submitCurate, waitTask, readConfig } from "./engine/ai.js";
 import { saveExhibition, listExhibitions, deleteExhibition, makeId } from "./core/store.js";
 
 initTheme();
@@ -21,12 +21,17 @@ const $pct = $("#pct");
 const $steps = $("#steps");
 const $result = $("#result");
 const $gallery = $("#gallery-grid");
+let busy = false;
+let lastJob = null;
+let lastBP = null;
+let lastId = null;
+let lastBlob = null;
 
 const STEPS = [
   { t: "读取 PDF 结构", d: "在本机打开文档，取回页数与页面尺寸", at: 5 },
   { t: "逐页抽取文本层", d: "重建单/双栏阅读顺序，把文字项拼回行与段", at: 52 },
   { t: "识别骨架与图注", d: "标题、作者、摘要、章节、图注、数值线索、参考文献", at: 70 },
-  { t: "六维度分析论文", d: "研究背景 / 核心问题 / 创新点 / 技术路线 / 实验过程 / 结果", at: 88 },
+  { t: "识别类型与六维度", d: "先判断论文类型，再看研究背景 / 问题 / 方法 / 实验 / 结果 / 边界", at: 88 },
   { t: "规划四幕与完整资料", d: "按原文依据组织四幕故事，原始分厅归入完整资料", at: 94 },
   { t: "生成展签并归档", d: "每条原文语句绑定页码与逐字引文，写入本机展览库", at: 100 },
 ];
@@ -54,19 +59,45 @@ function setProgress(pct, note) {
 function resetUI() {
   $pipeline.classList.remove("is-hidden");
   $result.classList.add("is-hidden");
+  $("#retry-ai").hidden = true;
   $("#analysis")?.classList.add("is-hidden");
+  $pct.style.color = "var(--gold)";
   setProgress(0);
   $pipeline.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 function fail(err) {
-  console.error(err);
+  const msg = String(err?.message || err || "未知错误");
+  const noText = /没有从这份 PDF|文字层|OCR|text/i.test(msg);
+  const empty = /空的|过小/i.test(msg);
+  const invalid = /Invalid PDF|structure|损坏|corrupt|format/i.test(msg);
+  const tooBig = /超过 60MB|过大/i.test(msg);
+  const storage = /配额|Quota|IndexedDB|存储/i.test(msg);
+  const hint = empty
+    ? "文件为空或只有几 KB。请确认它是完整的 PDF，再重新选择。"
+    : invalid
+    ? "这个文件不是完整或有效的 PDF。可以重新下载一份，或换一篇论文再试。"
+    : noText
+    ? "这份 PDF 可能是扫描件，或文字层不可复制。请换一份可选中文字的 PDF；扫描件需要先做 OCR。"
+    : tooBig
+      ? "请先压缩 PDF，或只上传论文正文部分。"
+      : storage
+        ? "浏览器存储空间不足。请在「本机展览库」里移除旧展览，或清理站点数据后再试。"
+        : /AI Core|模型|任务|后端/i.test(msg)
+          ? "AI Core 只影响讲解，不应中断本地布展。可以检查后端与密钥，或直接重试。"
+          : "可以重试一次；如果仍失败，换一篇有文字层的 PDF，或在 AI Core 页检查后端状态。";
   $pct.textContent = "中断";
   $pct.style.color = "var(--flag)";
+  const actions = el("div", { class: "row wrap", style: "gap:8px;margin-top:14px" });
+  if (lastJob) actions.append(el("button", { class: "btn btn--sm", text: "重新尝试",
+    onclick: () => run(lastJob.blob, lastJob.name) }));
+  actions.append(el("button", { class: "btn btn--ghost btn--sm", text: "换一份 PDF",
+    onclick: () => { $file.value = ""; $file.click(); } }));
+  if (/AI Core|模型|后端/i.test(msg)) actions.append(el("a", { class: "text-link", href: "core.html", text: "检查 AI Core 配置 →" }));
   $steps.append(el("div", { class: "callout callout--flag", style: "margin-top:14px;max-width:none" },
     el("div", { class: "callout__t", text: "布展没能完成" }),
-    el("div", { class: "callout__x", text: String(err?.message || err) }),
-    el("p", { class: "small dim", style: "margin:10px 0 0;font-family:var(--font-body);font-size:13px",
-      text: "常见原因：PDF 是纯扫描图、文件加密、或浏览器存储配额不足。可以换一篇有文字层的论文再试。" })));
+    el("div", { class: "callout__x", text: msg }),
+    el("p", { class: "small dim", style: "margin:10px 0 0;font-family:var(--font-body);font-size:14px;line-height:1.8", text: hint }),
+    actions));
 }
 
 /* ---------- 策展解读面板 ---------- */
@@ -74,8 +105,9 @@ function renderAnalysis(bp, curation) {
   const box = $("#analysis");
   if (!box) return;
   box.classList.remove("is-hidden");
-  $("#analysis-status").textContent = curation.message || "";
-  $("#analysis-status").style.color = curation.source === "ai-core" ? "var(--verify)"
+  const type = bp.meta.analysis?.type;
+  $("#analysis-status").textContent = `${type?.label ? type.label + " · " : ""}${curation.message || ""}`;
+  $("#analysis-status").style.color = curation.source === "ai-core" && !curation.fallbackReason ? "var(--verify)"
     : curation.source === "local" ? "var(--gold)" : "var(--ink-3)";
 
   const grid = $("#analysis-grid");
@@ -114,9 +146,15 @@ async function runCuration(bp) {
   const link = getCoreLink();
   if (link.backend) {
     try {
+      const A = bp.meta.analysis || {};
       const payload = {
         title: bp.meta.title, pageCount: bp.meta.pages,
-        dimensions: (bp.meta.analysis?.dimensions || []).map((d) => ({ id: d.id, name: d.name, count: d.count })),
+        paperType: A.type || null,
+        storyFocus: A.focus || null,
+        abstract: bp.__raw?.abstract || "",
+        sections: (bp.__raw?.sections || []).map((s) => ({ title: s.title, page: s.page })),
+        figures: (bp.__raw?.figures || []).slice(0, 8),
+        dimensions: (A.dimensions || []).map((d) => ({ id: d.id, name: d.name, count: d.count, quoteIds: d.quoteIds || [] })),
         sentences: Object.entries(bp.evidence || {}).map(([id, e]) => ({ id, page: e.page, section: e.section, text: e.quote })),
       };
       setProgress(95, "提交 AI Core 策展任务…");
@@ -128,27 +166,42 @@ async function runCuration(bp) {
       });
       recordTask(t);
       if (t.status === "done" && t.result) {
+        const aiActs = t.result.acts?.length || 0;
+        const zones = t.result.zones?.length || 0;
         return {
           source: "ai-core",
           result: { ...t.result, message: `AI Core 后端策展完成（${t.result.model || "模型"}）` },
-          message: `AI Core 模型策展：${t.result.acts?.length || 0} 幕科研故事、${t.result.zones?.length || 0} 个展区讲解，全部引文已回查证据表。`,
+          message: aiActs === 4
+            ? `AI Core 完成四幕故事${zones ? `与 ${zones} 个分厅讲解` : ""}；引文与保留数值均通过校验。`
+            : `AI Core 通过 ${aiActs}/4 幕${zones ? `、${zones} 个分厅讲解` : ""}，其余幕改用本地原文证据补齐。`,
         };
       }
       throw new Error(t.error || "策展任务失败");
     } catch (e) {
-      // 后端不可用/未配密钥/任务失败 → 降级，不阻塞生成
+      // 后端不可用/未配密钥/任务失败 → 降级，但把真实原因带回界面。
       console.warn("AI Core 策展降级：", e.message);
+      return {
+        source: "local", result: null, fallbackReason: e.message,
+        message: `AI Core 未能完成：${e.message}。已改用本地类型分析生成四幕，内容仍然只来自原文。可检查 AI Core 后重新尝试。`,
+      };
     }
   }
   return {
     source: "local", result: null,
-    message: "未连接 AI Core，使用本地六维度分析完成提取式策展（真实、可溯源、不编造）。",
+    message: "未连接 AI Core，使用本地类型分析与原文证据组织四幕；接入模型后讲解会更连贯。",
   };
 }
 
 async function run(blob, sourceName) {
+  if (busy) { $filename.textContent = "正在布展，请等当前任务完成…"; return; }
+  lastJob = null;
   if (!blob || blob.size < 1024) { fail(new Error("文件看起来是空的。")); return; }
   if (blob.size > 60 * 1024 * 1024) { fail(new Error("文件超过 60MB，请先压缩或换一篇。")); return; }
+  busy = true;
+  lastJob = { blob, name: sourceName };
+  for (const id of ["#pick", "#demo"]) { const b = $(id); if (b) b.disabled = true; }
+  $drop.setAttribute("aria-busy", "true");
+  $drop.classList.add("is-busy");
   resetUI();
   $pct.style.color = "var(--gold)";
   try {
@@ -168,6 +221,7 @@ async function run(blob, sourceName) {
     setProgress(98, "写入本机展览库…");
     const id = makeId();
     await saveExhibition({ id, blueprint: bp, blob });
+    lastBP = bp; lastId = id; lastBlob = blob;
     setProgress(100);
 
     $("#result-title").textContent = bp.meta.title;
@@ -175,6 +229,7 @@ async function run(blob, sourceName) {
       `已生成四幕故事与 ${bp.halls.length} 个原始资料分厅，共 ${Object.keys(bp.evidence).length} 条可溯源证据。` +
       curation.message + " 原文与策展语分开标注，结论均可回到原页。";
     const stats = [
+      ["论文类型", bp.meta.analysis?.type?.label || "通用研究"],
       ["页数", ex.pageCount], ["原文展签", Object.keys(bp.evidence).length],
       ["命中维度", hit], ["识别章节", (bp.__raw?.sections || []).length],
       ["图注", ex.figures.length], ["参考文献", ex.refs.length],
@@ -190,10 +245,18 @@ async function run(blob, sourceName) {
     $("#enter-station").href = "station.html?e=" + encodeURIComponent(id);
     $("#enter-read").href = "hall.html?e=" + encodeURIComponent(id);
     renderAnalysis(bp, curation);
+    const retry = $("#retry-ai");
+    if (retry) retry.hidden = curation.source !== "local";
     $result.classList.remove("is-hidden");
     renderGallery();
     $result.scrollIntoView({ behavior: "smooth", block: "center" });
   } catch (err) { fail(err); }
+  finally {
+    busy = false;
+    for (const id of ["#pick", "#demo"]) { const b = $(id); if (b) b.disabled = false; }
+    $drop.removeAttribute("aria-busy");
+    $drop.classList.remove("is-busy");
+  }
 }
 
 /* ---------- 上传交互 ---------- */
@@ -209,7 +272,7 @@ for (const ev of ["dragleave", "drop"]) $drop.addEventListener(ev, (e) => { e.pr
 $drop.addEventListener("drop", (e) => {
   const f = e.dataTransfer?.files?.[0];
   if (!f) return;
-  if (!/\.pdf$/i.test(f.name) && f.type !== "application/pdf") { fail(new Error("请放入 PDF 文件。")); return; }
+  if (!/\.pdf$/i.test(f.name) && f.type !== "application/pdf") { lastJob = null; fail(new Error("请放入 PDF 文件。")); return; }
   $filename.textContent = `已选择 · ${f.name} · ${(f.size / 1048576).toFixed(1)} MB`;
   run(f, f.name);
 });
@@ -228,8 +291,45 @@ $("#demo").addEventListener("click", async (e) => {
   finally { btn.disabled = false; btn.textContent = "用 ALOHA 论文试一次"; }
 });
 
+$("#retry-ai").addEventListener("click", async () => {
+  if (!lastBP || !lastBlob || !lastId) return;
+  if (!getCoreLink().backend) {
+    $("#result-note").textContent = "还没有配置 AI Core 后端。先到 AI Core 连接后端与模型，再回来点这里。";
+    return;
+  }
+  const btn = $("#retry-ai");
+  busy = true;
+  btn.disabled = true;
+  for (const id of ["#pick", "#demo"]) { const b = $(id); if (b) b.disabled = true; }
+  $drop.setAttribute("aria-busy", "true");
+  const old = btn.textContent;
+  btn.textContent = "正在重试 AI 策展…";
+  try {
+    const curation = await runCuration(lastBP);
+    if (curation.source === "ai-core" && curation.result) {
+      applyAIPlan(lastBP, curation.result);
+      await saveExhibition({ id: lastId, blueprint: lastBP, blob: lastBlob });
+      $("#result-note").textContent = `AI 策展已更新。${curation.message} 原文与策展语仍然分开标注。`;
+      btn.hidden = true;
+      renderGallery();
+    } else {
+      $("#result-note").textContent = curation.message || "AI Core 仍未完成，继续保留本地四幕。";
+    }
+    renderAnalysis(lastBP, curation);
+  } catch (e) {
+    $("#result-note").textContent = `重试失败：${e.message}。可以检查 AI Core 后再试，或直接阅读本地四幕。`;
+  } finally {
+    busy = false;
+    btn.disabled = false;
+    btn.textContent = old;
+    for (const id of ["#pick", "#demo"]) { const b = $(id); if (b) b.disabled = false; }
+    $drop.removeAttribute("aria-busy");
+  }
+});
+
 $("#again").addEventListener("click", () => {
   $result.classList.add("is-hidden");
+  $("#retry-ai").hidden = true;
   $("#analysis")?.classList.add("is-hidden");
   $pipeline.classList.add("is-hidden");
   $filename.textContent = ""; $file.value = "";
@@ -272,20 +372,33 @@ renderGallery();
   const link = getCoreLink();
   if (!strip || !text) return;
   if (!link.backend) {
-    text.textContent = "AI Core 未配置：将使用本地六维度分析完成提取式策展（真实、可溯源、不编造）。";
+    text.textContent = "AI Core 未配置（可选）：将用本地类型分析与原文证据生成四幕。";
     return;
   }
-  text.textContent = "正在探测 AI Core 后端…";
+  text.textContent = "正在检查 AI Core 后端与模型配置…";
   try {
     const res = await fetch(link.backend + "/health", { signal: AbortSignal.timeout(6000) });
     const h = await res.json().catch(() => ({}));
     if (!res.ok || !h.ok) throw new Error(h.error || "后端异常");
+    let cfg = null;
+    try { cfg = await readConfig(link); }
+    catch (e) {
+      if (e.status === 401) {
+        strip.classList.add("is-bad");
+        text.textContent = `AI Core 已连接，但缺少访问令牌（PW_TOKEN）。生成会先降级到本地分析。`;
+        return;
+      }
+      throw e;
+    }
+    if (!cfg.hasKey) {
+      strip.classList.add("is-bad");
+      text.textContent = `AI Core 已连接，但还没有保存模型密钥。生成会先降级到本地分析。`;
+      return;
+    }
     strip.classList.add("is-ok");
-    text.textContent = h.tokenRequired
-      ? `AI Core 已连接（${link.backend}）· 后端开启鉴权，需在 AI Core 页填入访问令牌。`
-      : `AI Core 已连接（${link.backend}）· 生成时将由模型负责故事与展区讲解。`;
+    text.textContent = `AI Core 已就绪 · ${cfg.model || "模型已配置"} · 生成时由模型写四幕，并逐条校验引文与数值。`;
   } catch (e) {
     strip.classList.add("is-bad");
-    text.textContent = `AI Core 后端不可达（${link.backend}）：${e.message}。将自动降级到本地提取式策展。`;
+    text.textContent = `AI Core 后端不可达（${link.backend}）：${e.message}。生成会自动使用本地分析。`;
   }
 })();

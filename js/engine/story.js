@@ -46,8 +46,12 @@ function actNode(act, i) {
   // 主线每幕最多一张核心图；其余图版收进深入阅读，避免主线变成长图报告。
   if (figs[0]?.src) body.append(figureNode(figs[0], i > 0));
 
-  // 主线：简短通俗故事
-  if (act.plain) body.append(el("p", { class: "act__plain-x", text: act.plain }));
+  // 主线：简短通俗故事。明确标注这是策展/模型写的导读，不是论文原文。
+  if (act.plain) {
+    const ai = STORY?.meta?.source === "ai-core";
+    body.append(el("div", { class: "act__plain-tag", text: ai ? "AI 导读 · 非原文" : "导读 · 非原文" }));
+    body.append(el("p", { class: "act__plain-x", text: act.plain }));
+  }
 
   // 主线：一个最有价值的数字
   if (act.stat?.value) {

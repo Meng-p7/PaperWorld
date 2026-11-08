@@ -38,7 +38,12 @@ async function loadModel() {
     if (c.baseUrl) $("#in-baseurl").value = c.baseUrl;
     if (c.model) $("#in-model").value = c.model;
     pill($("#key-state"), c.hasKey ? "已配置密钥" : "未配置密钥", c.hasKey ? "is-ok" : "is-warn");
-    if (c.hasKey) $("#in-key").placeholder = "已保存（留空则保持不变）";
+    if (c.hasKey) {
+      $("#in-key").placeholder = "已保存（留空则保持不变）";
+      out(`后端已连接 · ${c.model || "模型已配置"}`, "is-ok");
+    } else {
+      out("后端已连接 · 还没有保存模型密钥。", "is-bad");
+    }
     return true;
   } catch (e) {
     const unauthorized = e.status === 401 || /令牌|未授权/.test(e.message);
