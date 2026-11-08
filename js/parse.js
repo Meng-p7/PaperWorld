@@ -6,6 +6,7 @@ import { extractPdf } from "./engine/extract.js";
 import { analyze } from "./engine/analyze.js";
 import { curate, applyAIPlan } from "./engine/curate.js";
 import { getCoreLink, submitCurate, waitTask, readConfig } from "./engine/ai.js";
+import { readStored, detect } from "./core/endpoint.js";
 import { saveExhibition, listExhibitions, deleteExhibition, makeId } from "./core/store.js";
 
 initTheme();
@@ -143,7 +144,13 @@ function recordTask(t) {
 }
 
 async function runCuration(bp) {
-  const link = getCoreLink();
+  let link = getCoreLink();
+  if (!link.backend) {
+    // 静态托管时用户可能已在本地起了服务：静默试一次，不要求用户填地址。
+    setProgress(93, "检查本机服务…");
+    const r = await detect().catch(() => ({ ok: false }));
+    if (r.ok) link = { backend: r.base, token: readStored().token };
+  }
   if (link.backend) {
     try {
       const A = bp.meta.analysis || {};
@@ -365,40 +372,45 @@ function renderGallery() {
 }
 renderGallery();
 
-/* ---------- AI Core 状态提示 ---------- */
+/* ---------- 模型服务状态提示（地址不用用户填） ---------- */
 (async () => {
   const strip = $("#core-strip");
   const text = $("#core-strip-text");
-  const link = getCoreLink();
   if (!strip || !text) return;
-  if (!link.backend) {
-    text.textContent = "AI Core 未配置（可选）：将用本地类型分析与原文证据生成四幕。";
+  const link = getCoreLink();
+
+  // 只有「本站点就是后端」时才在这里探测：同源一定成功，不产生控制台噪音。
+  // 其它情况（线上托管 / 后端在别处）不主动发请求，只说明生成时会自动确认。
+  if (!link.backend || link.backend !== location.origin) {
+    text.textContent = "生成时会自动确认模型服务；连不上就用本地分析，不影响阅读。要接入自己的模型，在 AI Core 填一次 API Key。";
     return;
   }
-  text.textContent = "正在检查 AI Core 后端与模型配置…";
+
+  text.textContent = "正在确认模型服务…";
   try {
     const res = await fetch(link.backend + "/health", { signal: AbortSignal.timeout(6000) });
     const h = await res.json().catch(() => ({}));
-    if (!res.ok || !h.ok) throw new Error(h.error || "后端异常");
+    if (!res.ok) throw new Error(`服务没有正常响应（HTTP ${res.status}）`);
+    if (!h.ok) throw new Error(h.error || "服务异常");
     let cfg = null;
     try { cfg = await readConfig(link); }
     catch (e) {
       if (e.status === 401) {
         strip.classList.add("is-bad");
-        text.textContent = `AI Core 已连接，但缺少访问令牌（PW_TOKEN）。生成会先降级到本地分析。`;
+        text.textContent = "模型服务已连接，但缺少访问令牌。生成会先用本地分析；令牌在 AI Core 的「高级」里填一次。";
         return;
       }
       throw e;
     }
     if (!cfg.hasKey) {
       strip.classList.add("is-bad");
-      text.textContent = `AI Core 已连接，但还没有保存模型密钥。生成会先降级到本地分析。`;
+      text.textContent = "模型服务已连接，但还没有保存 API Key。生成会先用本地分析；在 AI Core 填一次 Key 就能用模型。";
       return;
     }
     strip.classList.add("is-ok");
-    text.textContent = `AI Core 已就绪 · ${cfg.model || "模型已配置"} · 生成时由模型写四幕，并逐条校验引文与数值。`;
+    text.textContent = `模型已就绪 · ${cfg.model || "已配置"} · 生成时由模型写四幕，并逐条校验引文与数值。`;
   } catch (e) {
     strip.classList.add("is-bad");
-    text.textContent = `AI Core 后端不可达（${link.backend}）：${e.message}。生成会自动使用本地分析。`;
+    text.textContent = `本机模型服务没有响应：${e.message}。生成会自动使用本地分析，不影响阅读。`;
   }
 })();

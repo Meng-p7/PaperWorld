@@ -1,11 +1,16 @@
-/* PaperWorld · AI Core 配置页控制器 */
+/* PaperWorld · AI Core 配置页控制器
+ *
+ * 产品原则：普通用户只填自己的 API Key。
+ * 后端地址由 js/core/endpoint.js 在运行时自动确认，页面上不出现“请填地址”。
+ */
 import { $, $$, el, initMobileNav } from "./core/ui.js";
 import { createStarfield } from "./cosmos/starfield.js";
 import {
   getCoreLink, saveCoreLink,
-  coreHealth, coreStatus, listProviders, readConfig,
+  coreHealth, listProviders, readConfig,
   writeConfig, clearConfig, testConnection,
 } from "./engine/ai.js";
+import { baseFromContext, readStored, detect } from "./core/endpoint.js";
 
 createStarfield({ sky: $("#sky"), particles: $("#particles"), mode: "ambient" });
 initMobileNav();
@@ -19,22 +24,88 @@ const out = (text, cls) => {
   n.textContent = text;
   n.className = "core-out" + (cls ? " " + cls : "");
 };
-const link = () => ({ backend: $("#in-backend").value.trim(), token: $("#in-token").value.trim() });
 
-/* ---------- 连接 ---------- */
-async function probe() {
-  const l = link();
-  pill($("#link-state"), "探测中…");
+/* ---------- 连接状态条 ---------- */
+const actBtn = (label, fn, ghost) => el("button", {
+  class: "cbtn cbtn--sm" + (ghost ? " cbtn--ghost" : ""),
+  type: "button",
+  text: label,
+  onclick: fn,
+});
+
+function setConn(state, title, desc, actions = []) {
+  $("#core-conn").dataset.state = state;
+  $("#conn-title").textContent = title;
+  $("#conn-desc").textContent = desc || "";
+  const box = $("#conn-acts");
+  box.textContent = "";
+  for (const a of actions) box.append(a);
+}
+
+function showSetup(on) {
+  const box = $("#core-setup");
+  if (box) box.hidden = !on;
+}
+
+/* 未连接时，模型卡不该看起来能用 */
+function setModelEnabled(on) {
+  for (const id of ["#btn-test", "#btn-save-model", "#btn-clear-model"]) {
+    const b = $(id); if (b) b.disabled = !on;
+  }
+  const hint = $("#model-hint");
+  if (hint) hint.textContent = on
+    ? "选择服务商，或填 OpenAI 兼容端点。API Key 只发给后端加密保存，不写入浏览器。"
+    : "后端还没连上。先按上面的步骤启动一次本机服务，这里就可以填 Key 了。";
+}
+
+async function probe(target) {
+  const l = target || getCoreLink();
+  setConn("checking", "正在确认后端…", l.backend || "本机没有服务时会自动降级");
   const h = await coreHealth(l);
-  if (!h.ok) { pill($("#link-state"), h.error ? "连不上" : "异常", "is-bad"); out("后端不可达：" + (h.error || "未知错误"), "is-bad"); return false; }
-  pill($("#link-state"), h.tokenRequired ? "已连接 · 需令牌" : "已连接", h.tokenRequired ? "is-warn" : "is-ok");
-  out(h.tokenRequired ? "后端可达 · 填写访问令牌后保存连接。" : "后端已连接。", "is-ok");
+  if (!h.ok) {
+    setConn("down", "没有连上后端", h.error || "本机服务没有响应", [
+      actBtn("重新检测", () => reconnect()),
+      actBtn("启动说明", () => showSetup(true), true),
+    ]);
+    showSetup(true);
+    setModelEnabled(false);
+    return false;
+  }
+  if (h.tokenRequired && !l.token) {
+    setConn("warn", "后端已连接，但缺少访问令牌", `${l.backend} 开启了鉴权`, [
+      actBtn("填写令牌", () => { $("#core-adv").open = true; $("#in-token").focus(); }, true),
+    ]);
+    showSetup(false);
+    setModelEnabled(false);
+    return false;
+  }
+  setConn("ok", "已连接本机服务", `${l.backend} · 地址自动确认，无需填写`);
+  showSetup(false);
+  setModelEnabled(true);
   return true;
 }
 
-async function loadModel() {
+/* 依次试候选地址：本机 8080 → 同源 → 已记住 → 声明 */
+async function reconnect() {
+  setConn("checking", "正在检测本机服务…", "尝试 localhost:8080 等地址");
+  const r = await detect();
+  if (!r.ok) {
+    setConn("down", "没有检测到本机服务", "如果还没启动，按下面的步骤做一次即可", [
+      actBtn("再试一次", () => reconnect()),
+      actBtn("启动说明", () => showSetup(true), true),
+    ]);
+    showSetup(true);
+    setModelEnabled(false);
+    return false;
+  }
+  $("#in-backend").value = r.base;
+  return probe({ backend: r.base, token: readStored().token });
+}
+
+async function loadModel(target) {
+  const l = target || getCoreLink();
   try {
-    const c = await readConfig(link());
+    const c = await readConfig(l);
     if (c.baseUrl) $("#in-baseurl").value = c.baseUrl;
     if (c.model) $("#in-model").value = c.model;
     pill($("#key-state"), c.hasKey ? "已配置密钥" : "未配置密钥", c.hasKey ? "is-ok" : "is-warn");
@@ -48,7 +119,7 @@ async function loadModel() {
   } catch (e) {
     const unauthorized = e.status === 401 || /令牌|未授权/.test(e.message);
     pill($("#key-state"), unauthorized ? "需要访问令牌" : "读取失败", unauthorized ? "is-warn" : "is-bad");
-    if (unauthorized) out("后端已开启鉴权，请在上方「访问令牌」填入 PW_TOKEN 后点「保存连接」。", "is-bad");
+    if (unauthorized) out("后端开启了鉴权，请在「高级」里填一次 PW_TOKEN。", "is-bad");
     else out(e.message, "is-bad");
     return false;
   }
@@ -71,13 +142,14 @@ function paintProviders(list) {
   for (const p of list) {
     box.append(el("button", {
       class: "core-provider" + ($("#in-baseurl").value === p.baseUrl ? " is-on" : ""),
+      type: "button",
       text: p.label,
       onclick: () => {
         if (p.baseUrl) $("#in-baseurl").value = p.baseUrl;
         if (p.model) $("#in-model").value = p.model;
         $$(".core-provider").forEach((b) => b.classList.remove("is-on"));
         box.querySelectorAll(".core-provider").forEach((b) => b.classList.toggle("is-on", b.textContent === p.label));
-        out("已填入 " + p.label + " 预设，请填写 API Key 后保存。");
+        out("已填入 " + p.label + " 预设，填 API Key 后保存即可。");
       },
     }));
   }
@@ -85,16 +157,16 @@ function paintProviders(list) {
 
 async function loadProviders() {
   let list = [];
-  try { list = await listProviders(link()); } catch { /* 后端不可用时用本地预设 */ }
+  try { list = await listProviders(getCoreLink()); } catch { /* 后端不可用时用本地预设 */ }
   paintProviders(list.length ? list : FALLBACK_PROVIDERS);
 }
 
-/* ---------- 任务列表（后端 + 本机记录） ---------- */
+/* ---------- 任务列表 ---------- */
 async function loadTasks() {
   const box = $("#tasks");
   const items = [];
+  const l = getCoreLink();
   try {
-    const l = link();
     if (l.backend) {
       const res = await fetch(l.backend + "/api/core/tasks", {
         headers: l.token ? { Authorization: "Bearer " + l.token } : {},
@@ -126,19 +198,33 @@ async function loadTasks() {
     items.some((t) => t.status === "running") ? "is-warn" : "");
 }
 
-/* ---------- 事件 ---------- */
-$("#btn-save-link").addEventListener("click", async () => {
-  saveCoreLink(link());
-  out("连接已保存到本机。");
-  await probe();
-  await loadModel();
-  await loadProviders();
-  await loadTasks();
-});
-$("#btn-probe").addEventListener("click", async () => {
-  if (await probe()) { await loadModel(); await loadProviders(); await loadTasks(); }
+/* ---------- 高级：手动地址 / 令牌 ---------- */
+const advLink = () => ({
+  backend: $("#in-backend").value.trim() || getCoreLink().backend,
+  token: $("#in-token").value.trim() || readStored().token,
 });
 
+$("#btn-probe").addEventListener("click", async () => {
+  const l = advLink();
+  if (l.backend) saveCoreLink(l);
+  if (await probe(l)) {
+    await loadModel(l);
+    await loadProviders();
+    await loadTasks();
+  }
+});
+
+$("#btn-save-link").addEventListener("click", async () => {
+  const l = advLink();
+  saveCoreLink(l);
+  if (await probe(l)) {
+    await loadModel(l);
+    await loadProviders();
+    await loadTasks();
+  }
+});
+
+/* ---------- 模型配置 ---------- */
 $("#btn-test").addEventListener("click", async () => {
   const btn = $("#btn-test");
   btn.disabled = true; out("测试中…");
@@ -148,7 +234,7 @@ $("#btn-test").addEventListener("click", async () => {
       baseUrl: $("#in-baseurl").value.trim(),
       model: $("#in-model").value.trim(),
       apiKey: $("#in-key").value.trim() || undefined,
-    }, link());
+    }, getCoreLink());
     out(`连接可用 · ${r.ms}ms · 回显「${r.echo || "ok"}」`, "is-ok");
     pill($("#key-state"), "密钥可用", "is-ok");
   } catch (e) {
@@ -166,7 +252,7 @@ $("#btn-save-model").addEventListener("click", async () => {
       baseUrl: $("#in-baseurl").value.trim(),
       model: $("#in-model").value.trim(),
       apiKey: $("#in-key").value.trim() || undefined,
-    }, link());
+    }, getCoreLink());
     $("#in-key").value = "";
     $("#in-key").placeholder = "已保存（留空则保持不变）";
     pill($("#key-state"), r.hasKey ? "已配置密钥" : "未配置密钥", r.hasKey ? "is-ok" : "is-warn");
@@ -177,7 +263,7 @@ $("#btn-save-model").addEventListener("click", async () => {
 
 $("#btn-clear-model").addEventListener("click", async () => {
   try {
-    await clearConfig(link());
+    await clearConfig(getCoreLink());
     $("#in-key").value = "";
     $("#in-key").placeholder = "sk-…";
     pill($("#key-state"), "已清除", "is-warn");
@@ -186,22 +272,32 @@ $("#btn-clear-model").addEventListener("click", async () => {
 });
 
 /* ---------- 初始化 ----------
- * 没有保存过后端地址时不主动发请求：避免首次打开就产生连接错误，
- * 也让用户先填地址、再点「探测后端」。 */
+ * 地址能确定就静默连接（同源访问时一定成功，不产生控制台错误）；
+ * 确定不了就显示启动说明，不主动乱发请求。 */
 (async () => {
-  const l = getCoreLink();
-  if (!l.backend) {
-    $("#in-backend").value = "http://localhost:8080";
-    pill($("#link-state"), "未连接", "is-warn");
-    out("填写后端地址后点「探测后端」。");
-    paintProviders(FALLBACK_PROVIDERS);
+  const ctx = baseFromContext();
+  $("#in-token").value = ctx.token || "";
+  if (ctx.base) $("#in-backend").value = ctx.base;
+
+  paintProviders(FALLBACK_PROVIDERS);
+  setModelEnabled(false);
+
+  if (!ctx.base) {
+    setConn("none", "还没有检测到本机服务", "地址不用你填。线上版没有模型后端，启动本机服务后会自动连上。", [
+      actBtn("检测本机服务", () => reconnect()),
+      actBtn("怎么启动", () => showSetup(true), true),
+    ]);
+    showSetup(true);
     return;
   }
-  $("#in-backend").value = l.backend;
-  $("#in-token").value = l.token;
-  await probe();
-  await loadModel();
-  await loadProviders();
-  await loadTasks();
-  setInterval(loadTasks, 4000);
+
+  if (await probe({ backend: ctx.base, token: ctx.token })) {
+    await loadModel({ backend: ctx.base, token: ctx.token });
+    await loadProviders();
+    await loadTasks();
+    setInterval(loadTasks, 4000);
+  } else {
+    // 记住的地址失效了：再扫一遍本机端口
+    await reconnect();
+  }
 })();

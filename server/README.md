@@ -6,10 +6,12 @@
 ## 快速开始
 
 ```bash
+# Windows：双击仓库根目录的 start-backend.bat（会自动打开浏览器）
 node server/index.js
 ```
 
 然后打开 `http://localhost:8080` —— 它同时托管了仓库根目录的静态前端，本地一条命令即可跑通完整产品。
+因为前端与后端同源，AI Core 会自动连接，用户只需要填自己的 API Key，不需要知道后端地址。
 
 生产环境请先设置环境变量（参考 `.env.example`）：
 
@@ -34,6 +36,8 @@ PORT=8080
 | GET | `/api/core/tasks` | 最近任务列表 |
 
 所有 `/api/*` 在设置了 `PW_TOKEN` 时都需要 `Authorization: Bearer <token>`；每 IP 限速 60 次/分钟。
+
+跨域与私有网络访问：响应统一带 `Access-Control-Allow-Origin: *` 与 `Access-Control-Allow-Private-Network: true`，预检请求返回 204。这样从公网页面（如 GitHub Pages）请求本机后端不会被浏览器拦掉。
 
 ## 安全设计
 

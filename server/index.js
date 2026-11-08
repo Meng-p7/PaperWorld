@@ -28,7 +28,9 @@ const CFGFILE = path.join(DATA, "core.json");
 const LOGFILE = path.join(DATA, "events.log");
 
 const PORT = Number(process.env.PORT || 8080);
-const HOST = process.env.HOST || "0.0.0.0";
+// 不写 HOST 时用 Node 默认双栈监听（::，同时接受 IPv4 映射地址），
+// 这样 localhost 无论解析到 127.0.0.1 还是 ::1 都能连上。
+const HOST = process.env.HOST || null;
 const PW_TOKEN = process.env.PW_TOKEN || "";
 const MODEL_TIMEOUT = Number(process.env.PW_MODEL_TIMEOUT || 45000);
 
@@ -55,6 +57,9 @@ function send(res, code, obj, headers = {}) {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+    // Chrome 私有网络访问（PNA）：从公网页面（如 GitHub Pages）请求 localhost 时，
+    // 预检必须显式允许，否则请求会被浏览器直接拦掉，页面只能看到「连不上」。
+    "Access-Control-Allow-Private-Network": "true",
     ...headers,
   });
   res.end(body);
@@ -603,6 +608,7 @@ function serveStatic(req, res, pathname) {
   res.writeHead(200, {
     "Content-Type": MIME[ext] || "application/octet-stream",
     "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Private-Network": "true",
   });
   fs.createReadStream(file).pipe(res);
   return true;
@@ -624,8 +630,12 @@ const server = http.createServer(async (req, res) => {
     fail(res, code, e.message || "服务器错误");
   }
 });
-server.listen(PORT, HOST, () => {
-  log(`PaperWorld AI Core 已启动 · http://${HOST}:${PORT}`);
+const onListen = () => {
+  log(`PaperWorld AI Core 已启动 · http://localhost:${PORT}`);
+  log(`      本地页面：http://localhost:${PORT}/index.html   模型配置：http://localhost:${PORT}/core.html`);
   log(`鉴权：${PW_TOKEN ? "已开启（PW_TOKEN）" : "未开启（开发模式，生产请设置 PW_TOKEN）"}`);
+  if (!PW_TOKEN && !HOST) log("提醒：当前监听所有网卡且未开鉴权，同一局域网内其他人也能访问；只想本机用可设 HOST=127.0.0.1。");
   log(`密钥存储：${process.env.PW_SECRET ? "PW_SECRET 环境变量" : KEYFILE}`);
-});
+};
+if (HOST) server.listen(PORT, HOST, onListen);
+else server.listen(PORT, onListen);

@@ -22,7 +22,7 @@ PaperWorld 是一个 AI 驱动的数字科研展览平台。上传 PDF 后，它
 
 1. 打开首页，进入空间站选择一幕，或直接阅读首展。
 2. 想看自己的论文，进入「上传论文」；PDF 在浏览器本地解析。
-3. 需要模型参与时，先到「AI Core」启动并连接你的后端，再回上传页生成。
+3. 需要模型参与时，到「AI Core」填入自己的 API Key 即可——后端地址由页面自动确认，你不需要填。
 4. 生成完成后进入四幕故事；需要完整证据与原文页图时，再打开「完整资料」。
 
 AI Core 失败不会丢弃已解析的论文与本地四幕：修好后端后，可在结果区点「重试 AI 策展」，只重跑策展，不重新上传。
@@ -40,6 +40,7 @@ AI Core 失败不会丢弃已解析的论文与本地四幕：修好后端后，
 | PDF | 本地 pdf.js 解析文字层、渲染原页并高亮引文 |
 | 数据 | `paperworld.blueprint/v1`：meta / evidence / halls / blocks，前后版本兼容 |
 | AI Core | `server/` 独立 Node 后端，代理模型调用、AES-256-GCM 加密保存密钥、异步策展任务 |
+| 后端地址 | 由 js/core/endpoint.js 自动解析：显式声明 → 同源 → 已记住 → 本机 8080；界面上不出现“请填地址” |
 | 持久化 | IndexedDB 保存 PDF 与蓝图，localStorage 保存小蓝图与索引；容量满时自动把旧蓝图迁到 IndexedDB，不删数据 |
 
 更细的模块说明、故事模型、存档映射与性能策略见 [docs/TECHNICAL.md](docs/TECHNICAL.md)。
@@ -52,21 +53,36 @@ PDF 文件与生成的展览只存在当前浏览器的 IndexedDB / localStorage
 
 ## 本地运行
 
-前端只需要一个静态服务器：
+**推荐路径（含 AI 策展）**：一条命令，前端与后端一起跑起来，零 npm 依赖。
+
+```bash
+# Windows：双击 start-backend.bat（会自动打开浏览器）
+# macOS / Linux：
+node server/index.js
+```
+
+然后访问 `http://localhost:8080`。这个地址本身就是完整站点：首页、上传、AI Core 都在里面。
+需要开鉴权时再带环境变量：`PW_TOKEN=你的令牌 PW_SECRET=你的主密钥 node server/index.js`。
+
+**只预览前端**（不使用模型）：
 
 ```bash
 python -m http.server 8000
 ```
 
-打开 `http://localhost:8000`。不要直接用 `file://` 打开，pdf.js 需要 HTTP 才能加载论文与 worker。
+打开 `http://localhost:8000`。这条路径没有后端，AI Core 会显示「启动本机服务」的引导；上传与四幕仍可用本地分析生成。
+不要直接用 `file://` 打开，pdf.js 与 ES 模块都需要 HTTP。
 
-需要 AI 策展时，再启动独立后端（零 npm 依赖）：
+### 后端地址是怎么确定的
 
-```bash
-PW_TOKEN=你的访问令牌 PW_SECRET=你的主密钥 node server/index.js
-```
+界面上不会出现「请填写后端地址」。`js/core/endpoint.js` 按这个顺序自动确认：
 
-默认端口 8080，同时托管静态前端，因此本地也可以直接打开 `http://localhost:8080`。配置方式与接口说明见 [server/README.md](server/README.md)。
+1. 代码里显式声明的地址（部署到自己的域名时改这一行，终端用户看不到）；
+2. 你上次连接成功记住的地址；
+3. 当前站点同源——用 `start-backend.bat` 打开时就是这种情况，零配置；
+4. 本机 `http://localhost:8080` / `http://127.0.0.1:8080`。
+
+只有两种情况才需要展开 AI Core 里的「高级」：后端部署在别的域名，或后端设置了 `PW_TOKEN`。
 
 ## 构建与开发
 

@@ -151,3 +151,23 @@ doors = acts.map((act, i) => ({
 - 旧 `index.html?e=<id>` 与 `hall.html#<id>`：改为进入故事 / 展开对应主题，仍然可用；
 - `meta.analysis` 新增 `type / focus`，旧蓝图缺这两个字段时仍按通用实验研究读取；
 - `assets/exhibits/manifest.json` 为空且无外部模型资产，不改变既有渲染。
+
+## 后端端点自动解析（`js/core/endpoint.js`）
+
+早期版本让用户在 AI Core 里填写后端地址，这对普通用户是错的：克隆项目的人往往不知道要跑后端，更不知道地址该填什么。现在地址完全由运行环境决定，界面只留「填 API Key」这一步。
+
+解析顺序（`baseFromContext()`，不联网）：
+
+1. `DECLARED` 常量——把项目部署到自己的后端后改这一行，终端用户不可见；
+2. `localStorage` 里上次连接成功记住的地址；
+3. 页面同源（`location.origin`），前提是 host 为 localhost / 127.0.0.1——用 `start-backend.bat` 打开时后端就在同源；
+4. 空。
+
+`detect()` 只在用户点击「检测本机服务」或生成论文需要模型时调用，依次探测候选地址的 `/health`，第一个返回 `service: paperworld-ai-core` 的地址被记住。**页面加载时不做任何猜测性请求**，因此在线上托管（GitHub Pages）打开时控制台是干净的。
+
+配套改动：
+
+- `js/engine/ai.js` 的 `getCoreLink()` 改为从 `endpoint.js` 读取，不再读输入框；
+- `core.html` 的「后端地址」输入移入 `<details>` 高级折叠，仅在自定义域名或开启 `PW_TOKEN` 时使用；
+- `parse.html` 的状态条只在「本站点就是后端」时探测，其余情况不联网；
+- `start-backend.bat` 启动后自动打开浏览器，用户落在同源页面上，AI Core 零点击即已连接。

@@ -3,24 +3,15 @@
  * 本模块只存「后端地址 + 访问令牌」，绝不把模型密钥写进 localStorage。
  */
 
-const KEY = "pw.ai.core.v1";
+import { baseFromContext, writeStored, clearStored } from "../core/endpoint.js";
 
+/* 后端地址不再由用户填写：这里直接从运行环境解析（同源 / 声明 / 记住的 / 本机 8080）。 */
 export function getCoreLink() {
-  try {
-    const c = JSON.parse(localStorage.getItem(KEY) || "{}");
-    return {
-      backend: (c.backend || "").trim().replace(/\/+$/, ""),
-      token: typeof c.token === "string" ? c.token : "",
-    };
-  } catch { return { backend: "", token: "" }; }
+  const { base, token } = baseFromContext();
+  return { backend: base, token };
 }
-export function saveCoreLink(link) {
-  localStorage.setItem(KEY, JSON.stringify({
-    backend: (link.backend || "").trim().replace(/\/+$/, ""),
-    token: link.token || "",
-  }));
-}
-export function clearCoreLink() { localStorage.removeItem(KEY); }
+export function saveCoreLink(link) { writeStored({ backend: link.backend, token: link.token }); }
+export function clearCoreLink() { clearStored(); }
 
 function headers(token, json = true) {
   return {
@@ -32,7 +23,7 @@ function headers(token, json = true) {
 async function call(path, { method = "GET", body, link, timeout = 20000 } = {}) {
   const l = link || getCoreLink();
   const base = l.backend || "";
-  if (!base) throw new Error("尚未配置 AI Core 后端地址");
+  if (!base) throw new Error("本机还没有可用的后端服务");
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeout);
   try {
@@ -48,7 +39,7 @@ async function call(path, { method = "GET", body, link, timeout = 20000 } = {}) 
     if (!res.ok) {
       const msg = data?.error || `请求失败（HTTP ${res.status}）`;
       const err = new Error(res.status === 401
-        ? "后端已开启鉴权：请在「后端连接」里填写访问令牌（PW_TOKEN）"
+        ? "后端已开启鉴权：在 AI Core 的「高级」里填一次访问令牌"
         : msg);
       err.status = res.status;
       err.code = data?.code || (res.status === 401 ? "UNAUTHORIZED" : undefined);
@@ -57,7 +48,7 @@ async function call(path, { method = "GET", body, link, timeout = 20000 } = {}) 
     return data;
   } catch (e) {
     if (e.name === "AbortError") throw new Error("请求超时，后端没有响应");
-    if (e.message === "Failed to fetch") throw new Error("连不上后端，请确认地址与是否已启动服务");
+    if (e.message === "Failed to fetch") throw new Error("连不上后端服务：本机服务可能没有启动");
     throw e;
   } finally { clearTimeout(timer); }
 }
@@ -65,7 +56,7 @@ async function call(path, { method = "GET", body, link, timeout = 20000 } = {}) 
 export async function coreHealth(link) {
   const l = link || getCoreLink();
   const base = l.backend || "";
-  if (!base) return { ok: false, error: "未配置后端地址" };
+  if (!base) return { ok: false, error: "本机服务未启动" };
   try {
     const res = await fetch(base + "/health", { headers: headers(l.token), signal: AbortSignal.timeout(8000) });
     const data = await res.json().catch(() => ({}));
