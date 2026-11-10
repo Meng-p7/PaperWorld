@@ -69,6 +69,15 @@
 
 当前**没有加载外部 GLB**。`js/cosmos/assets.js` 只读取 `assets/exhibits/manifest.json`，条目必须带明确的 `license` 才会尝试加载；当前 manifest 为空，所以首页与大厅全部是程序化几何。若之后加入 GLB，需要先 vendor `GLTFLoader` / 可选 `KTX2Loader` 与 basis 转码器，并提供失败回退。
 
+### 加载态
+
+首页与空间站共用同一段开场：一张论文从纵深飞入 → 左右两半沿中缝合起 → 压成一条竖光 → 光横过来铺开 → PaperWorld 从光里浮出。
+
+- 结构在 `index.html` / `station.html` 的 `.cosmos-loader` 里，样式在 `css/cosmos.css`（`.ldr-*`），**完全由 CSS 动画驱动**，时长由 `--ldr-dur` 控制，不依赖 JS 才能播放；
+- `js/cosmos/loader.js` 的 `finishLoader()` 只决定什么时候揭开：等 `#loader-word` 的动画结束（`animationend`，已结束则按 `playState` 判定）+ 页面 `load`，再留一拍，然后加 `.is-done` 淡出；任何情况下都有 6 秒保底，不让遮罩挡住页面；
+- `prefers-reduced-motion` 下隐藏纸页与光，直接显示名字与说明。
+
+
 ## 5. 空间站内部
 
 `station.html` 仍优先使用 `js/cosmos/stationCinematic.js`（Three.js PBR 环形大厅），失败时回退 `station3d.js`，再失败显示四幕列表。改动仅在输入：

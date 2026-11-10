@@ -7,6 +7,7 @@ import { el, $, initMobileNav } from "../core/ui.js";
 import { loadExhibition } from "../core/store.js";
 import { createStarfield } from "./starfield.js";
 import { createStation3D as createLegacyStation } from "./station3d.js";
+import { finishLoader } from "./loader.js";
 import { resolveStory } from "../engine/stories/aloha.js";
 
 const qs = new URLSearchParams(location.search);
@@ -140,7 +141,6 @@ initMobileNav();
 /* ---------- 启动 ---------- */
 (async () => {
   const bp = await resolveBlueprint();
-  const loader = $("#loader");
   if (!bp) {
     $("#station-paper").textContent = "这台设备上没有这场展览";
     $("#station-meta").textContent = "可能是换了浏览器或清过站点数据。";
@@ -148,7 +148,7 @@ initMobileNav();
       el("div", { class: "zone__t", text: "没有可读的论文" }),
       el("div", { class: "zone__x", text: "可以上传一篇 PDF，或直接打开示范展。" }),
       el("div", { class: "zone__f" }, el("a", { class: "zone__enter", href: "parse.html", text: "上传论文 →" }))));
-    loader.classList.add("is-done");
+    finishLoader($("#loader"));
     return;
   }
 
@@ -172,6 +172,6 @@ initMobileNav();
     addEventListener("pagehide", () => s3.destroy?.(), { once: true });
   }
 
-  const start = performance.now();
-  setTimeout(() => loader.classList.add("is-done"), Math.max(0, 400 - (performance.now() - start)));
+  /* 加载态：等「论文折成一道光」跑完，再揭开四幕走廊 */
+  finishLoader($("#loader"));
 })();

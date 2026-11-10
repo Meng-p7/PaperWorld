@@ -99,24 +99,146 @@
 .cbtn--ghost { background: none; border-color: rgba(140, 232, 255, .22); color: var(--cos-ink-2); }
 .cbtn--sm { padding: 9px 16px; font-size: 10px; }
 
-/* ---------- 加载态 ---------- */
+/* ---------- 加载态：一张论文折成一道光，留下一行名字 ---------- */
 .cosmos-loader {
   position: fixed; inset: 0; z-index: 100;
-  display: grid; place-items: center;
+  display: grid; place-items: center; overflow: hidden;
   background: #040711;
-  transition: opacity .7s ease, visibility .7s;
+  transition: opacity .62s ease, visibility .62s;
 }
 .cosmos-loader.is-done { opacity: 0; visibility: hidden; pointer-events: none; }
-.cosmos-loader__in { width: min(320px, 76vw); text-align: center; }
-.cosmos-loader__mark {
-  font-family: var(--font-display); font-size: 30px; letter-spacing: .06em; margin-bottom: 20px;
-  background: linear-gradient(100deg, #eaf6ff, #8ce8ff 55%, #b39bff);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
+
+.cosmos-loader__in {
+  --fs: clamp(34px, 5.2vw, 84px);
+  --ldr-dur: 2.35s;
+  position: relative;
+  width: min(92vw, 560px);
+  height: calc(var(--fs) * 7);
+  perspective: calc(var(--fs) * 16);
+  transition: transform .85s var(--ease-out);
 }
-.cosmos-loader__track { height: 2px; background: rgba(140, 232, 255, .14); overflow: hidden; }
-.cosmos-loader__track i { display: block; height: 100%; width: 30%; background: var(--holo); animation: c-load 1.3s ease-in-out infinite; }
-@keyframes c-load { 0% { transform: translateX(-110%); } 100% { transform: translateX(360%); } }
-.cosmos-loader__t { margin-top: 14px; font-family: var(--font-mono); font-size: 10px; letter-spacing: .24em; color: var(--cos-ink-3); text-transform: uppercase; }
+/* 收尾：名字先定住，幕布整体微微前推着抬起来 */
+.cosmos-loader.is-done .cosmos-loader__in { transform: scale(1.05); }
+
+/* --- 纸页 --- */
+.ldr-paper {
+  position: absolute; left: 50%; top: 50%;
+  width: calc(var(--fs) * 1.95); height: calc(var(--fs) * 2.58);
+  margin-left: calc(var(--fs) * -.975); margin-top: calc(var(--fs) * -1.29);
+  transform-style: preserve-3d;
+  transform: translateZ(calc(var(--fs) * -3.4)) rotateY(38deg) rotateX(10deg);
+  opacity: 0;
+}
+.is-run .ldr-paper { animation: ldr-paper var(--ldr-dur) var(--ease-out) both; }
+@keyframes ldr-paper {
+  0%   { transform: translateZ(calc(var(--fs) * -3.4)) rotateY(38deg) rotateX(10deg); opacity: 0; }
+  16%  { transform: translateZ(0) rotateY(-6deg) rotateX(3deg); opacity: 1; }
+  30%  { transform: translateZ(0) rotateY(-3deg) rotateX(1.6deg); opacity: 1; }
+  52%  { transform: translateZ(0) rotateY(-1deg) rotateX(1deg); opacity: 1; }
+  64%, 100% { opacity: 0; }
+}
+.ldr-half {
+  position: absolute; top: 0; height: 100%; width: 50%; overflow: hidden;
+  background: linear-gradient(160deg, #fdfcf7, #e9e4d4);
+  box-shadow: 0 0 calc(var(--fs) * .7) rgba(150, 210, 255, .16);
+  backface-visibility: hidden;
+}
+.ldr-half.l { left: 0; transform-origin: 100% 50%; border-radius: 3px 0 0 3px; }
+.ldr-half.r { right: 0; transform-origin: 0 50%; border-radius: 0 3px 3px 0; }
+.is-run .ldr-half.l { animation: ldr-fold-l var(--ldr-dur) cubic-bezier(.5, 0, .3, 1) both; }
+.is-run .ldr-half.r { animation: ldr-fold-r var(--ldr-dur) cubic-bezier(.5, 0, .3, 1) both; }
+@keyframes ldr-fold-l { 0%, 30% { transform: rotateY(0); } 52%, 100% { transform: rotateY(87deg); } }
+@keyframes ldr-fold-r { 0%, 30% { transform: rotateY(0); } 52%, 100% { transform: rotateY(-87deg); } }
+
+.ldr-pg { position: absolute; top: 0; width: 200%; height: 100%; background: linear-gradient(160deg, #fefdfa, #ece7da); }
+.ldr-half.l .ldr-pg { left: 0; }
+.ldr-half.r .ldr-pg { left: -100%; }
+.ldr-pg > * { position: absolute; }
+.ldr-ttl { left: 12%; right: 12%; top: 10%; height: 9%; background: #33465e; opacity: .6; border-radius: 1px; }
+.ldr-sub { left: 12%; right: 36%; top: 21%; height: 2.4%; background: #8f8a7a; opacity: .55; }
+.ldr-lines {
+  left: 12%; right: 12%; top: 30%; bottom: 12%; opacity: 0;
+  background: repeating-linear-gradient(#8b8371 0 1.1px, transparent 1.1px 4px);
+}
+.ldr-fig {
+  left: 12%; right: 36%; top: 45%; height: 26%; opacity: 0;
+  background: #dcd7c6; border: 1px solid #a49d88;
+}
+.ldr-fig::after { content: ""; position: absolute; inset: 16% 14%; border: 1px solid #9c9583; border-radius: 50%; }
+.is-run .ldr-lines { animation: ldr-lines var(--ldr-dur) ease both; }
+.is-run .ldr-fig { animation: ldr-fig var(--ldr-dur) ease both; }
+@keyframes ldr-lines {
+  0%, 12% { opacity: 0; transform: scaleX(.2); transform-origin: left top; }
+  34% { opacity: .5; transform: scaleX(1); transform-origin: left top; }
+  64%, 100% { opacity: .5; transform: scaleX(1); transform-origin: left top; }
+}
+@keyframes ldr-fig {
+  0%, 18% { opacity: 0; transform: scale(.86); }
+  38%, 64% { opacity: .9; transform: scale(1); }
+  100% { opacity: .9; transform: scale(1); }
+}
+
+/* --- 中缝的光 --- */
+.ldr-crease, .ldr-beam { position: absolute; left: 50%; top: 50%; }
+.ldr-crease {
+  width: 1.5px; height: calc(var(--fs) * 2.9);
+  margin-left: -.75px; margin-top: calc(var(--fs) * -1.45);
+  background: linear-gradient(180deg, transparent, #dff4ff 22%, #fff 50%, #c9e9ff 78%, transparent);
+  box-shadow: 0 0 calc(var(--fs) * .8) rgba(150, 225, 255, .9);
+  opacity: 0;
+}
+.is-run .ldr-crease { animation: ldr-crease var(--ldr-dur) ease both; }
+@keyframes ldr-crease {
+  0%, 40% { opacity: 0; transform: scaleY(.2); }
+  54% { opacity: 1; transform: scaleY(1); }
+  66% { opacity: 1; transform: scaleY(1.05); }
+  76%, 100% { opacity: 0; transform: scaleY(1.05); }
+}
+.ldr-beam {
+  height: 1.6px; width: 0; margin-top: -.8px;
+  transform: translateX(-50%);
+  top: calc(50% + var(--fs) * .58);
+  background: linear-gradient(90deg, transparent, #8ce8ff 16%, #fff 50%, #b39bff 84%, transparent);
+  box-shadow: 0 0 calc(var(--fs) * .6) rgba(140, 232, 255, .7);
+  opacity: 0; z-index: 3;
+}
+.is-run .ldr-beam { animation: ldr-beam var(--ldr-dur) cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes ldr-beam {
+  0%, 54% { width: 0; opacity: 0; height: 1.6px; }
+  64% { width: calc(var(--fs) * 8); opacity: 1; height: 1.6px; }
+  76% { width: calc(var(--fs) * 12); opacity: 1; height: 1.2px; }
+  86% { width: calc(var(--fs) * 13.5); opacity: .5; height: .8px; }
+  100% { width: calc(var(--fs) * 14); opacity: 0; height: .6px; }
+}
+
+/* --- 名字 --- */
+.ldr-word {
+  position: absolute; left: 50%; top: 50%; width: max-content;
+  transform: translate(-50%, -50%);
+  text-align: center; white-space: nowrap;
+  font-family: var(--font-display); font-size: var(--fs); line-height: 1;
+  letter-spacing: .02em; color: #eaf6ff; opacity: 0; z-index: 2;
+  text-shadow: 0 0 calc(var(--fs) * .6) rgba(140, 232, 255, .55),
+               0 0 calc(var(--fs) * 1.8) rgba(150, 120, 255, .3);
+}
+.is-run .ldr-word { animation: ldr-word var(--ldr-dur) ease both; }
+@keyframes ldr-word {
+  0%, 60% { opacity: 0; filter: blur(10px); letter-spacing: .46em; transform: translate(-50%, -50%) scale(1.05); }
+  78% { opacity: 1; filter: blur(2px); letter-spacing: .08em; transform: translate(-50%, -50%) scale(1); }
+  92%, 100% { opacity: 1; filter: blur(0); letter-spacing: .02em; transform: translate(-50%, -50%) scale(1); }
+}
+
+.ldr-meta {
+  position: absolute; left: 0; right: 0; top: calc(50% + var(--fs) * 1.9);
+  margin: 0; text-align: center; white-space: nowrap;
+  font-family: var(--font-mono); font-size: clamp(11px, .9vw, 13px); letter-spacing: .26em;
+  color: rgba(150, 172, 202, .92); opacity: 0;
+}
+.is-run .ldr-meta { animation: ldr-meta var(--ldr-dur) ease both; }
+@keyframes ldr-meta {
+  0%, 80% { opacity: 0; transform: translateY(6px); }
+  96%, 100% { opacity: 1; transform: translateY(0); }
+}
 
 /* ---------- 宇宙入口 ---------- */
 .entrance { position: relative; z-index: 2; height: 100svh; overflow: hidden; display: flex; flex-direction: column; }
@@ -509,6 +631,13 @@ body.cosmos-studio .triad__n, body.cosmos-studio .gcard__tag { color: var(--holo
   .dimension__pages { padding-top: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .entrance__station .ring--3, .dock::after, .exhibit::before, .cosmos-loader__track i { animation: none; }
+  .entrance__station .ring--3, .dock::after, .exhibit::before { animation: none; }
   .cbtn, .dock, .zone { transition: none; }
+  /* 加载态直接落在名字上，不做折叠 */
+  .cosmos-loader__in .ldr-paper,
+  .cosmos-loader__in .ldr-crease,
+  .cosmos-loader__in .ldr-beam { display: none; }
+  .ldr-word { opacity: 1; filter: none; letter-spacing: .02em; }
+  .ldr-meta { opacity: 1; }
+  .is-run .ldr-word, .is-run .ldr-meta { animation: none; }
 }

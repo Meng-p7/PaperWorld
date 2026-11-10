@@ -5,11 +5,11 @@
 import { createStarfield } from "./starfield.js";
 import { createCamera } from "./camera.js";
 import { createEntranceScene } from "./entranceScene.js";
+import { finishLoader } from "./loader.js";
 import { $ } from "../core/ui.js";
 import { initMobileNav } from "../core/ui.js";
 
 const loader = $("#loader");
-const loaderText = $("#loader-text");
 const hero = $("#hero");
 const bar = $("#cam-bar");
 const flash = $("#flash");
@@ -18,7 +18,10 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 createStarfield({ sky: $("#sky"), particles: $("#particles"), mode: "entrance" });
 const canvas = $("#entrance-canvas");
 const scene = createEntranceScene({ canvas });
-if (!scene) canvas.style.display = "none";
+if (!scene) {
+  canvas.style.display = "none";
+  $("#loader-text").textContent = "兼容模式 · 仍可继续";
+}
 window.__pwEntrance = scene; // 性能探针：window.__pwEntrance.getPerf()
 canvas.addEventListener("pw:scene-lost", () => {
   scene?.destroy?.();
@@ -44,7 +47,6 @@ const cam = createCamera({
   onStage(stage) {
     document.querySelectorAll(".camstage__i").forEach((n) =>
       n.classList.toggle("is-on", n.dataset.stage === stage));
-    loaderText.textContent = stage === "WARP" ? "正在接近空间站" : stage === "DOCK" ? "对接舱门" : "正在接近空间站";
   },
   onComplete() {
     if (leaving) return;
@@ -97,13 +99,4 @@ addEventListener("keydown", (e) => {
 initMobileNav();
 
 /* ---------- 加载态 ---------- */
-const start = performance.now();
-function ready() {
-  const wait = Math.max(0, 520 - (performance.now() - start));
-  setTimeout(() => {
-    loader.classList.add("is-done");
-    loaderText.textContent = scene ? "点击进入空间站" : "兼容模式 · 仍可继续";
-  }, wait);
-}
-if (document.readyState === "complete") ready();
-else addEventListener("load", ready, { once: true });
+finishLoader(loader);
