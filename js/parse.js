@@ -5,7 +5,7 @@ import { el, $, initTopbar, initMobileNav } from "./core/ui.js";
 import { extractPdf } from "./engine/extract.js";
 import { analyze } from "./engine/analyze.js";
 import { curate, applyAIPlan } from "./engine/curate.js";
-import { getCoreLink, submitCurate, waitTask, readConfig } from "./engine/ai.js";
+import { getCoreLink, submitCurate, waitTask, readConfig, coreHealth } from "./engine/ai.js";
 import { readStored, detect } from "./core/endpoint.js";
 import { saveExhibition, listExhibitions, deleteExhibition, makeId } from "./core/store.js";
 
@@ -144,6 +144,12 @@ function recordTask(t) {
 
 async function runCuration(bp) {
   let link = getCoreLink();
+  // 同源猜测可能命中的是静态预览服务器（例如 python -m http.server），
+  // 先确认它真的会答 /health，避免直接 POST 进静态服务器留下 501。
+  if (link.backend) {
+    const h = await coreHealth(link).catch(() => ({ ok: false }));
+    if (!h.ok) link = { backend: "", token: link.token };
+  }
   if (!link.backend) {
     // 静态托管时用户可能已在本地起了服务：静默试一次，不要求用户填地址。
     setProgress(93, "检查本机服务…");

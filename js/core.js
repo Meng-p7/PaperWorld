@@ -161,44 +161,6 @@ async function loadProviders() {
   paintProviders(list.length ? list : FALLBACK_PROVIDERS);
 }
 
-/* ---------- 任务列表 ---------- */
-async function loadTasks() {
-  const box = $("#tasks");
-  if (!box) return;
-  const items = [];
-  const l = getCoreLink();
-  try {
-    if (l.backend) {
-      const res = await fetch(l.backend + "/api/core/tasks", {
-        headers: l.token ? { Authorization: "Bearer " + l.token } : {},
-        signal: AbortSignal.timeout(6000),
-      });
-      const d = await res.json();
-      for (const t of (d.tasks || []).slice(-8).reverse()) items.push(t);
-    }
-  } catch { /* 后端不可用则只看本机记录 */ }
-  try {
-    const local = JSON.parse(localStorage.getItem("pw.ai.tasks") || "[]");
-    for (const t of local.slice(0, 6)) if (!items.some((x) => x.id === t.id)) items.push(t);
-  } catch { /* ignore */ }
-
-  if (!items.length) {
-    box.textContent = "";
-    box.append(el("div", { class: "core-task core-dim", text: "还没有策展任务。在「上传论文」里点生成即可。" }));
-    pill($("#task-state"), "空闲");
-    return;
-  }
-  box.textContent = "";
-  for (const t of items.slice(0, 10)) {
-    const done = t.status === "done", err = t.status === "error";
-    box.append(el("div", { class: "core-task" + (done ? " is-done" : err ? " is-error" : "") },
-      el("span", {}, el("b", { text: t.id.slice(0, 12) }), " ", t.stage || t.status),
-      el("span", { class: "core-dim", text: done ? `${t.acts ?? "?"} 幕 / ${t.zones ?? "?"} 展区` : err ? (t.error || "失败").slice(0, 40) : `${Math.round((t.progress || 0) * 100)}%` })));
-  }
-  pill($("#task-state"), items.some((t) => t.status === "running") ? "进行中" : "空闲",
-    items.some((t) => t.status === "running") ? "is-warn" : "");
-}
-
 /* ---------- 高级：手动地址 / 令牌 ---------- */
 const advLink = () => ({
   backend: $("#in-backend").value.trim() || getCoreLink().backend,
@@ -211,7 +173,6 @@ $("#btn-probe").addEventListener("click", async () => {
   if (await probe(l)) {
     await loadModel(l);
     await loadProviders();
-    await loadTasks();
   }
 });
 
@@ -221,7 +182,6 @@ $("#btn-save-link").addEventListener("click", async () => {
   if (await probe(l)) {
     await loadModel(l);
     await loadProviders();
-    await loadTasks();
   }
 });
 
@@ -295,8 +255,6 @@ $("#btn-clear-model").addEventListener("click", async () => {
   if (await probe({ backend: ctx.base, token: ctx.token })) {
     await loadModel({ backend: ctx.base, token: ctx.token });
     await loadProviders();
-    await loadTasks();
-    setInterval(loadTasks, 4000);
   } else {
     // 记住的地址失效了：再扫一遍本机端口
     await reconnect();

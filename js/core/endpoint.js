@@ -40,10 +40,6 @@ export function writeStored(patch = {}) {
   return next;
 }
 
-export function clearStored() {
-  try { localStorage.removeItem(STORE_KEY); } catch { /* ignore */ }
-}
-
 /* 不联网就能确定的地址 */
 export function baseFromContext() {
   const stored = readStored();
@@ -54,12 +50,12 @@ export function baseFromContext() {
 }
 
 /* 探测用的候选顺序：先贵的确定项，最后猜本机端口 */
-export function candidates() {
+function candidates() {
   const out = [];
   const push = (u) => { const n = norm(u); if (n && !out.includes(n)) out.push(n); };
   push(DECLARED);
   push(readStored().backend);
-  if (isLocalOrigin()) push(location.origin);
+  // 同源地址由 baseFromContext() 直接给，走到这里说明它没通过健康检查，不必再试一次
   for (const p of LOCAL_PORTS) push(p);
   return out;
 }
@@ -79,9 +75,4 @@ export async function detect({ timeout = 2600 } = {}) {
     } catch { /* 该候选不可用，继续下一个 */ }
   }
   return { ok: false, base: "" };
-}
-
-/* 当前页面的站点是否由后端托管（决定要不要提示“先启动本机服务”） */
-export function servedByBackend() {
-  return baseFromContext().source === "same-origin";
 }

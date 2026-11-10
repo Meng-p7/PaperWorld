@@ -35,7 +35,7 @@ PORT=8080
 | POST | `/api/core/test` | 测试模型连接（发一条最小请求，返回耗时与回显） |
 | POST | `/api/core/curate` | 提交策展任务，返回 `taskId` |
 | GET | `/api/core/task/:id` | 轮询任务进度与结果 |
-| GET | `/api/core/tasks` | 最近任务列表 |
+| GET | `/api/core/tasks` | 最近任务列表（仅内存，服务重启后清空） |
 
 所有 `/api/*` 在设置了 `PW_TOKEN` 时都需要 `Authorization: Bearer <token>`；每 IP 限速 60 次/分钟。
 
@@ -65,6 +65,8 @@ PW_ALLOWED_ORIGINS=https://meng-p7.github.io node server/index.js
 - **数据目录** `server/data/` 已加入 `.gitignore`，不会被提交。
 
 ## 策展任务
+
+任务只保存在内存里：重启服务后 `/api/core/tasks` 为空，正在进行的请求也会中断。论文与展馆数据在前端浏览器，不受影响。
 
 `POST /api/core/curate` 接收论文类型、摘要、章节、图注、**原文语句清单**（`sentences: [{id, page, section, dim, text}]`）与带 `quoteIds` 的维度信息，由模型生成科研故事四幕（problem / solution / results / impact）与分厅讲解。
 

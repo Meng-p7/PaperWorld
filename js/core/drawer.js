@@ -21,7 +21,7 @@ export function initDrawer(options = {}) {
   return true;
 }
 
-export function closeDrawer() {
+function closeDrawer() {
   drawer?.classList.remove("is-open");
   scrim?.classList.remove("is-open");
 }
@@ -101,4 +101,3 @@ export function withEv(node, ids) {
   return node;
 }
 
-export function getEvidence() { return cfg.evidence; }

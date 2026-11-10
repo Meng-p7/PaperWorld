@@ -108,8 +108,9 @@ function readBody(req, limit = 12 * 1024 * 1024) {
 /* ---------------- 鉴权 + 限速 ---------------- */
 function authorized(req) {
   if (!PW_TOKEN) return true;
+  // 只接受标准 Bearer 形式，避免裸 token 进入代理/网关日志
   const h = req.headers.authorization || "";
-  return h === `Bearer ${PW_TOKEN}` || h === PW_TOKEN;
+  return h === `Bearer ${PW_TOKEN}`;
 }
 const hits = new Map();
 function rateLimit(req, limit = 60, windowMs = 60000) {
@@ -229,17 +230,6 @@ function newTask() {
   const t = { id, status: "queued", progress: 0, stage: "排队中", createdAt: Date.now(), result: null, error: null };
   tasks.set(id, t);
   return t;
-}
-/* 任务结果落盘，服务重启后仍可查历史（不含任何密钥） */
-function persistTask(t) {
-  try {
-    fs.mkdirSync(path.join(DATA, "tasks"), { recursive: true });
-    fs.writeFileSync(path.join(DATA, "tasks", t.id + ".json"), JSON.stringify({
-      id: t.id, status: t.status, stage: t.stage, error: t.error,
-      createdAt: t.createdAt, finishedAt: Date.now(),
-      acts: t.result?.acts?.length ?? 0, zones: t.result?.zones?.length ?? 0, rejects: t.result?.rejects ?? [],
-    }, null, 2));
-  } catch { /* 落盘失败不影响返回 */ }
 }
 function jsonFrom(text) {
   const clean = String(text || "").replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
@@ -508,7 +498,6 @@ async function runCurate(task, payload, cfg, apiKey) {
   task.stage = "完成";
   task.status = "done";
   task.result = { ...plan, paperType: input.paperType, usage: totalUsage, repaired, model: cfg.model, provider: cfg.provider };
-  persistTask(task);
   log(`task ${task.id} done: ${plan.acts.length} acts, ${plan.zones.length} zones, ${plan.rejects.length} rejected, repair=${repaired}`);
 }
 
@@ -523,11 +512,6 @@ async function handleApi(req, res, pathname) {
   if (!rateLimit(req)) { fail(res, 429, "请求过于频繁，请稍后再试", { retryAfter: 60 }); return true; }
   if (!authorized(req)) { fail(res, 401, "未授权：请在配置里填写后端访问令牌（PW_TOKEN）"); return true; }
 
-  if (pathname === "/api/core/status" && req.method === "GET") {
-    const c = loadConfig();
-    send(res, 200, { ok: true, hasKey: Boolean(c.apiKeyEnc), provider: c.provider, tokenRequired: Boolean(PW_TOKEN) });
-    return true;
-  }
   if (pathname === "/api/core/providers" && req.method === "GET") {
     send(res, 200, { ok: true, providers: Object.entries(PROVIDERS).map(([id, p]) => ({ id, ...p })) });
     return true;
@@ -595,7 +579,6 @@ async function handleApi(req, res, pathname) {
       task.status = "error";
       task.error = redact(e.message || "策展失败", [apiKey]);
       task.stage = "失败";
-      persistTask(task);
       log(`task ${task.id} failed: ${task.error}`);
     });
     send(res, 202, { ok: true, taskId: task.id, status: task.status });

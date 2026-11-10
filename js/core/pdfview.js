@@ -44,7 +44,7 @@ const LIG = {
   "×": "x",
 };
 
-export function norm(s) {
+function norm(s) {
   let out = "";
   for (const ch of s) {
     const c = LIG[ch] ?? ch;

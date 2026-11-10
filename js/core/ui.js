@@ -20,50 +20,6 @@ export function el(tag, attrs = {}, ...kids) {
   return node;
 }
 
-/* 段落内联标记：只支持 **加粗** 与 `等宽`，其余按纯文本处理。
- * 不用 innerHTML，避免任何注入面。 */
-export function rich(text) {
-  const frag = document.createDocumentFragment();
-  const re = /(\*\*[^*]+\*\*|`[^`]+`)/g;
-  let last = 0;
-  let m;
-  while ((m = re.exec(text))) {
-    if (m.index > last) frag.append(text.slice(last, m.index));
-    if (m[0].startsWith("**")) frag.append(el("strong", { text: m[0].slice(2, -2) }));
-    else frag.append(el("code", { class: "mono", text: m[0].slice(1, -1) }));
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) frag.append(text.slice(last));
-  return frag;
-}
-
-/* ---------- theme ---------- */
-const THEME_KEY = "pw.theme";
-
-export function currentTheme() {
-  return document.documentElement.dataset.theme || "dark";
-}
-
-export function setTheme(mode) {
-  document.documentElement.dataset.theme = mode;
-  try {
-    localStorage.setItem(THEME_KEY, mode);
-  } catch {}
-  dispatchEvent(new CustomEvent("pw:theme", { detail: { mode } }));
-  $$(".js-theme").forEach((b) => b.setAttribute("aria-pressed", String(mode === "light")));
-}
-
-export function initTheme() {
-  let saved = null;
-  try {
-    saved = localStorage.getItem(THEME_KEY);
-  } catch {}
-  setTheme(saved === "light" ? "light" : "dark");
-  $$(".js-theme").forEach((btn) =>
-    btn.addEventListener("click", () => setTheme(currentTheme() === "dark" ? "light" : "dark"))
-  );
-}
-
 /* ---------- topbar ---------- */
 export function initTopbar() {
   const bar = $(".topbar");
@@ -121,36 +77,4 @@ export function initReveal(root = document) {
   };
   addEventListener("scroll", fallback, { passive: true });
   setTimeout(fallback, 900);
-}
-
-/* ---------- 数字滚动 ---------- */
-export function countUp(node, to, { dur = 1200, decimals = 0, suffix = "" } = {}) {
-  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduced) {
-    node.textContent = to.toFixed(decimals) + suffix;
-    return;
-  }
-  const from = 0;
-  const t0 = performance.now();
-  const ease = (x) => 1 - Math.pow(1 - x, 4);
-  (function step(now) {
-    const p = Math.min(1, (now - t0) / dur);
-    const v = from + (to - from) * ease(p);
-    node.textContent = v.toFixed(decimals) + suffix;
-    if (p < 1) requestAnimationFrame(step);
-  })(t0);
-}
-
-export function observeOnce(node, cb, opts) {
-  const io = new IntersectionObserver(
-    (es) => {
-      if (es.some((e) => e.isIntersecting)) {
-        cb();
-        io.disconnect();
-      }
-    },
-    opts || { threshold: 0.4 }
-  );
-  io.observe(node);
-  return io;
 }

@@ -3,7 +3,7 @@
  * 本模块只存「后端地址 + 访问令牌」，绝不把模型密钥写进 localStorage。
  */
 
-import { baseFromContext, writeStored, clearStored } from "../core/endpoint.js";
+import { baseFromContext, writeStored } from "../core/endpoint.js";
 
 /* 后端地址不再由用户填写：这里直接从运行环境解析（同源 / 声明 / 记住的 / 本机 8080）。 */
 export function getCoreLink() {
@@ -11,7 +11,6 @@ export function getCoreLink() {
   return { backend: base, token };
 }
 export function saveCoreLink(link) { writeStored({ backend: link.backend, token: link.token }); }
-export function clearCoreLink() { clearStored(); }
 
 function headers(token, json = true) {
   return {
@@ -63,8 +62,6 @@ export async function coreHealth(link) {
     return { ok: res.ok && data.ok, ...data };
   } catch (e) { return { ok: false, error: e.message || "连不上后端" }; }
 }
-
-export async function coreStatus(link) { return call("/api/core/status", { link }); }
 
 export async function listProviders(link) {
   const d = await call("/api/core/providers", { link });
