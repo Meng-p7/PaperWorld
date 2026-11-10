@@ -165,6 +165,8 @@ doors = acts.map((act, i) => ({
 
 `detect()` 只在用户点击「检测本机服务」或生成论文需要模型时调用，依次探测候选地址的 `/health`，第一个返回 `service: paperworld-ai-core` 的地址被记住。**页面加载时不做任何猜测性请求**，因此在线上托管（GitHub Pages）打开时控制台是干净的。
 
+启动脚本 `start-backend.bat` 只使用 ASCII 字符并保持 CRLF 换行。两个都是必需的：cmd.exe 解析批处理时按控制台代码页读字节，`chcp 65001` 并不会让它在解析阶段按 UTF-8 处理，中文行会被截断成「不是内部或外部命令」；LF 换行则会让多行 `if (...)` 块报语法错误。`.gitattributes` 里用 `*.bat -text` 禁止 Git 做换行转换，否则从 GitHub 下载 ZIP 拿到的又是 LF 版本。
+
 配套改动：
 
 - `js/engine/ai.js` 的 `getCoreLink()` 改为从 `endpoint.js` 读取，不再读输入框；

@@ -1,63 +1,87 @@
 @echo off
-chcp 65001 >nul
 setlocal EnableExtensions
 cd /d "%~dp0"
+title PaperWorld
 
 echo ============================================
-echo  PaperWorld
+echo   PaperWorld
 echo ============================================
 echo.
 
-REM ---- 1. Node.js 版本 ----
+rem ---- 0. files present ----
+if not exist "server\index.js" (
+  echo [x] server\index.js not found.
+  echo     Unzip or clone the whole project first.
+  echo     Current folder: %CD%
+  echo.
+  pause
+  exit /b 1
+)
+
+rem ---- 1. Node.js 18+ ----
 where node >nul 2>nul
-if errorlevel 1 (
-  echo [x] 没有找到 Node.js。
-  echo     请先安装 Node.js 18 或更新版本：https://nodejs.org/
-  echo     安装后重新双击本文件。
-  echo.
-  pause
-  exit /b 1
-)
+if errorlevel 1 goto NO_NODE
 
-for /f "tokens=1 delims=." %%v in ('node -p "process.versions.node.split('.')[0]"') do set NODE_MAJOR=%%v
-if not defined NODE_MAJOR set NODE_MAJOR=0
-if %NODE_MAJOR% LSS 18 (
-  echo [x] Node.js 版本过低：当前 v%NODE_MAJOR%.x，需要 18 或更新版本。
-  echo     请到 https://nodejs.org/ 升级后重试。
-  echo.
-  pause
-  exit /b 1
-)
+set "NODE_MAJOR="
+for /f "tokens=1 delims=." %%v in ('node -v') do set "NODE_MAJOR=%%v"
+if defined NODE_MAJOR set "NODE_MAJOR=%NODE_MAJOR:v=%"
+if not defined NODE_MAJOR set "NODE_MAJOR=0"
+if %NODE_MAJOR% LSS 18 goto OLD_NODE
 
-REM ---- 2. 端口占用 ----
-set PORT=8080
-if not "%PW_PORT%"=="" set PORT=%PW_PORT%
-netstat -ano | findstr /R /C:":%PORT% .*LISTENING" >nul 2>nul
-if not errorlevel 1 (
-  echo [x] 端口 %PORT% 已被占用。
-  echo     可能已经有一个 PaperWorld 在运行：直接打开 http://localhost:%PORT% 试试。
-  echo     要换端口，先设置环境变量 PW_PORT，例如：set PW_PORT=8090
-  echo.
-  pause
-  exit /b 1
-)
+rem ---- 2. port ----
+set "PORT=8080"
+if not "%PW_PORT%"=="" set "PORT=%PW_PORT%"
+set "BUSY="
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr /R /C:":%PORT% .*LISTENING"') do if not defined BUSY set "BUSY=%%p"
+if not defined BUSY goto RUN
 
-echo  服务地址 : http://localhost:%PORT%/index.html
-echo  模型设置 : http://localhost:%PORT%/core.html
+echo [!] Port %PORT% is already in use by PID %BUSY%.
 echo.
-echo  保持本窗口打开即为运行中；关闭窗口或按 Ctrl+C 停止。
+echo     If that is a PaperWorld you started earlier, just open:
+echo       http://localhost:%PORT%/index.html
 echo.
+echo     Opening it for you now. If the page does not load, another
+echo     program owns the port. Close it, or run this line first and
+echo     then double-click this file again:
+echo       set PW_PORT=8090
+echo.
+start "" http://localhost:%PORT%/index.html
+pause
+exit /b 0
 
-REM 浏览器通常比 Node 启动慢，先打开即可正常命中服务
+:RUN
+echo   Site : http://localhost:%PORT%/index.html
+echo   Setup: http://localhost:%PORT%/core.html
+echo.
+echo   Keep this window open while you use the site.
+echo   Close it or press Ctrl+C to stop.
+echo.
 start "" http://localhost:%PORT%/index.html
 
 node server/index.js
-set CODE=%ERRORLEVEL%
-
+set "CODE=%ERRORLEVEL%"
 echo.
 if not "%CODE%"=="0" (
-  echo [x] 服务异常退出（代码 %CODE%）。上面最后几行通常是原因。
+  echo [x] Service exited with code %CODE%. See the lines above.
 ) else (
-  echo [服务已停止]
+  echo [stopped]
 )
 pause >nul
+exit /b %CODE%
+
+:NO_NODE
+echo [x] Node.js not found.
+echo.
+echo     Install Node.js 18 or newer from https://nodejs.org/
+echo     then double-click this file again.
+echo.
+pause
+exit /b 1
+
+:OLD_NODE
+echo [x] Node.js is too old: v%NODE_MAJOR%.x found, 18+ required.
+echo.
+echo     Upgrade from https://nodejs.org/ then double-click this file again.
+echo.
+pause
+exit /b 1

@@ -1,0 +1,4 @@
+.gitattributes -text
+# Windows batch files must keep CRLF. Git newline conversion would ship LF
+# versions and cmd.exe then fails with a syntax error on double-click.
+*.bat -text
