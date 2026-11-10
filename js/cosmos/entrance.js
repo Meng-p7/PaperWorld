@@ -62,7 +62,6 @@ function leaveNow() {
 
 /* ---------- 交互 ---------- */
 $("#launch").addEventListener("click", () => cam.engage());
-$("#skip").addEventListener("click", () => { if (cam.z > 0.02) cam.skip(); else leaveNow(); });
 
 addEventListener("wheel", (e) => {
   if (leaving) return;

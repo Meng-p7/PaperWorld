@@ -2,12 +2,13 @@
  * 把论文讲成普通人愿意看完的故事：四幕主线（难题/解法/结果/价值与局限）+ 每幕可展开深入阅读。
  * 通俗与技术是策展语（界面标注非原文）；结论由原文承担，可点开回到 PDF 原页高亮。
  */
-import { el, $, initTheme, initTopbar, initReveal, initMobileNav } from "../core/ui.js";
+import { el, $, initTopbar, initReveal, initMobileNav } from "../core/ui.js";
 import { initDrawer, evChip, openEvidence, openPage } from "../core/drawer.js";
 import { loadExhibition } from "../core/store.js";
 import { mountInteractive } from "../interactives.js";
 import { mountGeneric } from "./generic.js";
 import { resolveStory } from "./stories/aloha.js";
+import { mountArchive } from "./render.js";
 
 const qs = new URLSearchParams(location.search);
 const exhibitId = qs.get("e");
@@ -116,8 +117,8 @@ function actNode(act, i) {
     });
   }
   deepBody.append(el("p", { class: "small dimmer" },
-    "想看完整展厅、全部实验表格与超参数？",
-    el("a", { href: "hall.html" + suffix, style: "color:var(--gold)", text: "查看完整资料 →" })));
+    "想看原始分厅、全部实验表格与超参数？",
+    el("a", { href: "#full-archive", style: "color:var(--gold)", text: "跳到完整档案 ↓" })));
   deep.append(deepBody);
   body.append(deep);
 
@@ -146,7 +147,7 @@ async function renderReferences() {
     }
     body.append(list);
   }
-  body.append(el("a", { class: "text-link", href: "hall.html" + suffix, text: "打开完整资料与原文页图 →" }));
+  body.append(el("a", { class: "text-link", href: "#full-archive", text: "↑ 回到完整档案与原文页图" }));
   details.append(body);
   box.append(details);
 }
@@ -159,7 +160,7 @@ async function boot() {
       el("h2", { class: "act__title", text: "这台设备上没有这场展览" }),
       el("p", { class: "lead", text: "可能是换了浏览器或清过站点数据。" }),
       el("a", { class: "btn", href: "parse.html", text: "去上传一篇论文" })));
-    initTheme(); initTopbar(); initMobileNav();
+    initTopbar(); initMobileNav();
     return;
   }
   BP = bp;
@@ -194,13 +195,14 @@ async function boot() {
 
   const main = $("#story");
   STORY.acts.forEach((a, i) => main.append(actNode(a, i)));
+
+  // 四幕之后是同一篇论文的完整档案：不再跳去另一个页面。
+  await mountArchive({ bp: BP, embedded: true });
   await renderReferences();
 
   $("#enter-station").href = "station.html" + suffix;
   $("#enter-parse").href = "parse.html";
-  $("#foot-hall").href = "hall.html" + suffix;
 
-  initTheme();
   initTopbar();
   initReveal();
   initMobileNav();

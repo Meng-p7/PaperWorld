@@ -127,7 +127,7 @@ export function buildLocalStory(bp) {
       tagline: cue,
       plain: has
         ? `这一幕看${typeLabel}论文的「${cue}」。本机从原文里找到 ${count} 条可核对依据，主要在${range(ids)}。下面先给原句，读懂它再决定要不要展开技术细节。`
-        : `本幕没有检出足以支撑「${cue}」的原文依据，因此不生成结论。可以打开完整资料逐页核对；接上 AI Core 后，模型也只能使用已抽取的原文。`,
+        : `本幕没有检出足以支撑「${cue}」的原文依据，因此不生成结论。可以到完整档案逐页核对；接入模型后，模型也只能使用已抽取的原文。`,
       tech: has
         ? `对应维度：${s.dimIds.map((d) => byId.get(d)?.name || d).join(" / ")}。识别信号：${(s.dimIds.flatMap((d) => byId.get(d)?.signals || []).slice(0, 4).join(" / ")) || "版面位置与信息量"}。这里只描述原文如何被归类，不替论文补充结论。`
         : "",
@@ -140,7 +140,7 @@ export function buildLocalStory(bp) {
     meta: {
       source: "local",
       titleZh: `一篇${typeLabel}论文，四幕读完`,
-      note: `本地类型分析 · 共 ${acts.reduce((n, a) => n + a.quotes.length, 0)} 条原文引用。接入 AI Core 后可生成更连贯的叙事。`,
+      note: `本地类型分析 · 共 ${acts.reduce((n, a) => n + a.quotes.length, 0)} 条原文引用。在设置里接入模型后可生成更连贯的叙事。`,
     },
   };
 }

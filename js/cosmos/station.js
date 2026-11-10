@@ -133,7 +133,6 @@ if (!mobile && !reduce) {
 }
 
 /* ---------- 导航 ---------- */
-$("#direct").addEventListener("click", () => { location.href = "story.html" + suffix; });
 $("#back").addEventListener("click", () => { location.href = "index.html"; });
 addEventListener("keydown", (e) => { if (e.key === "Escape") location.href = "index.html"; });
 initMobileNav();

@@ -1,61 +1,48 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="dark">
+<html lang="zh-CN" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI Core · PaperWorld 模型配置</title>
-<meta name="description" content="配置 PaperWorld 的 AI Core：接入模型服务商，密钥由后端加密保存，浏览器不接触 API Key。">
+<title>设置 · PaperWorld</title>
+<meta name="description" content="PaperWorld 设置：填入自己的模型 API Key，查看本机服务状态。后端地址由程序自动确认，不需要填写。">
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/exhibition.css">
 <link rel="stylesheet" href="css/studio.css">
+<link rel="stylesheet" href="css/story.css">
 <link rel="stylesheet" href="css/cosmos.css">
 <link rel="stylesheet" href="css/core.css">
 <link rel="stylesheet" href="css/refined.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23040711'/><path d='M8 22V10l8 7 8-7v12' stroke='%238ce8ff' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23f4f1ea'/><path d='M8 22V10l8 7 8-7v12' stroke='%239c6410' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
 </head>
-<body class="cosmos-page core-page">
+<body class="settings-page">
 
-<canvas id="sky" class="cosmos__layer" aria-hidden="true"></canvas>
-<canvas id="particles" class="cosmos__layer cosmos__particles" aria-hidden="true"></canvas>
-<div class="cosmos__vignette" aria-hidden="true"></div>
-
-<header class="cosmos-topbar">
+<header class="topbar">
   <a class="brand" href="index.html"><b>PaperWorld</b><span class="brand__sub">科研博物馆</span></a>
-  <nav class="cosmos-nav">
-    <a href="index.html">首页</a>
-    <a href="station.html">空间站</a>
-    <a href="story.html">科研故事</a>
+  <nav class="topnav">
+    <a href="station.html">探索</a>
     <a href="parse.html">上传论文</a>
-    <a href="core.html" class="is-active">AI Core</a>
-    <a href="about.html">关于</a>
+    <a href="core.html" class="is-active">设置</a>
     <button id="nav-toggle" class="iconbtn nav-toggle" aria-label="打开导航" aria-expanded="false" aria-controls="mobile-menu">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>
   </nav>
   <div id="mobile-menu" class="mobile-menu" aria-label="移动端导航">
-    <a href="index.html">首页</a>
-    <a href="station.html">空间站</a>
-    <a href="story.html">科研故事</a>
+    <a href="station.html">探索</a>
     <a href="parse.html">上传论文</a>
-    <a href="core.html">AI Core</a>
-    <a href="about.html">关于</a>
+    <a href="core.html">设置</a>
   </div>
 </header>
 
-<main class="core-wrap">
-  <section class="core-hero">
-    <p class="station__eyebrow">AI Core · 唯一的模型配置入口</p>
-    <h1 class="core-hero__title">让模型读懂论文，<br>让展馆负责让人看懂</h1>
-    <p class="core-hero__sub">
-      模型只在生成时工作：分析论文、规划四幕、写讲解、挑原文。展馆生成后正常浏览不再消耗 Token。
-      API Key 加密保存在你自己的后端，浏览器不接触密钥。
+<main class="settings">
+  <header class="settings__head">
+    <p class="settings__eyebrow">设置</p>
+    <h1 class="settings__title">接上你自己的模型</h1>
+    <p class="settings__lead">
+      你只需要做一件事：粘贴自己的 API Key。后端在哪、能不能连，由页面自己确认。
+      不配置也能用——四幕故事会改由本地分析生成，只是讲解更朴素。
     </p>
-    <p class="core-note">
-      AI Core 是可选的。你只需要做一件事：填入自己的模型 API Key。
-      后端在哪、能不能连，都由页面自己确认——不需要你填地址。
-    </p>
-  </section>
+  </header>
 
   <section class="core-conn" id="core-conn" data-state="checking">
     <span class="core-conn__dot" aria-hidden="true"></span>
@@ -69,19 +56,45 @@
   <section class="core-setup" id="core-setup" hidden>
     <h2>先启动本机服务，只需一次</h2>
     <ol class="core-steps">
-      <li>下载并双击 <a class="mono" href="start-backend.bat" download>start-backend.bat</a>。它会自动打开 <span class="mono">http://localhost:8080</span>。</li>
-      <li>从那个地址继续使用本站（首页、上传、AI Core 都在同一个服务里）。</li>
-      <li>回到 AI Core，页面会自动连上，你只需要填 API Key。</li>
+      <li>
+        下载或克隆整个项目：
+        <a href="https://github.com/Meng-p7/PaperWorld/archive/refs/heads/main.zip" rel="noopener" download>下载 ZIP</a>，
+        或 <code>git clone https://github.com/Meng-p7/PaperWorld.git</code>。
+      </li>
+      <li>解压后在项目目录双击 <code>start-backend.bat</code>（macOS / Linux 运行 <code>node server/index.js</code>），它会自动打开 <code>http://localhost:8080</code>。</li>
+      <li>从那个地址继续使用本站，回到这里会自动连上，只剩填 API Key。</li>
     </ol>
     <p class="core-setup__hint">
-      没装 Node？先安装 <a href="https://nodejs.org/" target="_blank" rel="noopener">Node.js 18 或更新版本</a>；macOS / Linux 在项目目录运行 <span class="mono">node server/index.js</span>。
-      不想装也完全能用：上传论文照常生成四幕，只是讲解由本地分析写，不由模型写。
+      需要 <a href="https://nodejs.org/" target="_blank" rel="noopener">Node.js 18 或更新版本</a>。
+      在线版（GitHub Pages）没有模型后端，只能使用本地分析。
     </p>
   </section>
 
+  <section class="core-card" id="card-model">
+    <div class="core-card__h">
+      <h2>模型</h2>
+      <span class="core-pill" id="key-state">未配置</span>
+    </div>
+    <p class="core-card__d" id="model-hint">选择服务商后填入 API Key。Key 只发给你的后端加密保存，浏览器不留存。</p>
+    <div class="core-providers" id="providers"></div>
+    <div class="core-row">
+      <label>API Key<input id="in-key" type="password" placeholder="粘贴你自己的 Key" autocomplete="off"></label>
+    </div>
+    <div class="core-row">
+      <label>模型接口地址<input id="in-baseurl" type="url" placeholder="选服务商后自动填入" autocomplete="off"></label>
+      <label>模型名称<input id="in-model" type="text" placeholder="选服务商后自动填入" autocomplete="off"></label>
+    </div>
+    <div class="core-btns">
+      <button class="cbtn cbtn--primary cbtn--sm" id="btn-save-model">保存</button>
+      <button class="cbtn cbtn--sm" id="btn-test">测试连接</button>
+      <button class="cbtn cbtn--ghost cbtn--sm" id="btn-clear-model">清除</button>
+      <span class="core-out" id="model-out"></span>
+    </div>
+  </section>
+
   <details class="core-adv" id="core-adv">
-    <summary>高级：使用自己的后端地址，或后端开了访问令牌</summary>
-    <p class="core-adv__d">只有两种情况需要展开：你把后端部署在别的域名，或后端设置了 <span class="mono">PW_TOKEN</span>。日常使用请忽略这里。</p>
+    <summary>高级：后端在别的域名，或后端开了访问令牌</summary>
+    <p class="core-adv__d">日常使用不需要展开。只有你把后端部署到自己的域名，或设置了 <code>PW_TOKEN</code> 时才填。</p>
     <div class="core-row">
       <label>后端地址<input id="in-backend" type="url" placeholder="程序会自动确认，通常留空" autocomplete="off"></label>
       <label>访问令牌（PW_TOKEN）<input id="in-token" type="password" placeholder="后端未设置鉴权可留空" autocomplete="off"></label>
@@ -92,65 +105,22 @@
     </div>
   </details>
 
-  <div class="core-grid">
-    <section class="core-card" id="card-model">
-      <div class="core-card__h">
-        <h2>模型配置</h2>
-        <span class="core-pill" id="key-state">未配置</span>
-      </div>
-      <p class="core-card__d" id="model-hint">选择服务商，或填 OpenAI 兼容端点。API Key 只发给后端加密保存，不写入浏览器。</p>
-      <div class="core-providers" id="providers"></div>
-      <div class="core-row">
-        <label>API Key<input id="in-key" type="password" placeholder="粘贴你自己的 Key，保存后浏览器不保留" autocomplete="off"></label>
-      </div>
-      <div class="core-row">
-        <label>模型接口地址<input id="in-baseurl" type="url" placeholder="选服务商后自动填入" autocomplete="off"></label>
-        <label>模型名称<input id="in-model" type="text" placeholder="选服务商后自动填入" autocomplete="off"></label>
-      </div>
-      <div class="core-btns">
-        <button class="cbtn cbtn--primary cbtn--sm" id="btn-test">测试连接</button>
-        <button class="cbtn cbtn--sm" id="btn-save-model">保存配置</button>
-        <button class="cbtn cbtn--ghost cbtn--sm" id="btn-clear-model">清除</button>
-        <span class="core-out" id="model-out"></span>
-      </div>
-    </section>
-
-    <section class="core-card" id="card-task">
-      <div class="core-card__h">
-        <h2>策展任务</h2>
-        <span class="core-pill" id="task-state">空闲</span>
-      </div>
-      <p class="core-card__d">生成是异步任务，结果写入展馆蓝图；之后浏览不再调用模型。</p>
-      <div class="core-tasks" id="tasks"><div class="core-task core-dim">还没有策展任务。在「上传论文」里生成一次即可。</div></div>
-    </section>
-
-    <section class="core-card core-card--wide" id="card-help">
-      <div class="core-card__h"><h2>安全与降级</h2></div>
-      <ul class="core-list">
-        <li>密钥用 AES-256-GCM 加密保存在后端，接口与日志都不回显。</li>
-        <li>生产环境请设置 <span class="mono">PW_TOKEN</span>，否则能访问端口的人都能用你的模型额度。</li>
-        <li>模型输出会逐条校验：引文必须存在于证据表，讲解出现新数值即丢弃；失败自动降级到本地分析。</li>
-        <li>没有后端也能用：本地六维度分析会完成提取式策展，只是叙事更朴素。</li>
-        <li>启动：双击 <span class="mono">start-backend.bat</span>（或 <span class="mono">node server/index.js</span>），它同时托管静态前端。</li>
-        <li>后端地址不需要你填：同源访问时自动使用当前站点，静态托管时自动试本机 8080。</li>
-      </ul>
-    </section>
-  </div>
+  <section class="settings__notes" id="about" aria-labelledby="notes-title">
+    <h2 id="notes-title">使用与数据</h2>
+    <dl class="settings__facts">
+      <dt>怎么用</dt>
+      <dd>首页进入空间站选一幕，或直接上传 PDF。四幕读完后，同一页下方就是完整档案。</dd>
+      <dt>数据去哪</dt>
+      <dd>PDF 在浏览器本地解析，文件本身不上传。启用模型时，只把从 PDF 抽取的原文语句发给<b>你自己的后端</b>，再由后端转给模型服务；浏览器不接触 API Key。</dd>
+      <dt>不接模型</dt>
+      <dd>本地类型分析仍会生成四幕与完整档案，内容只取自原文，不会编造。</dd>
+      <dt>版本</dt>
+      <dd>PaperWorld 4.2 · 源码 <a href="https://github.com/Meng-p7/PaperWorld" target="_blank" rel="noopener">Meng-p7/PaperWorld</a></dd>
+    </dl>
+  </section>
 </main>
 
-<footer class="footer">
-  <div class="page">
-    <div class="row between wrap" style="align-items:flex-start">
-      <div style="max-width:58ch">
-        <p style="margin:0;line-height:1.9">
-          配置与密钥只存在你的后端；换前端托管不动后端，换后端不动前端。
-          接口与部署方式见 <span class="mono">server/README.md</span>。
-        </p>
-      </div>
-    </div>
-  </div>
-</footer>
-
+<div id="scrim" class="scrim"></div>
 <script type="module" src="js/core.js"></script>
 <script src="js/fileguard.js"></script>
 </body>

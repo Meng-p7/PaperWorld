@@ -28,9 +28,15 @@ const CFGFILE = path.join(DATA, "core.json");
 const LOGFILE = path.join(DATA, "events.log");
 
 const PORT = Number(process.env.PORT || 8080);
-// 不写 HOST 时用 Node 默认双栈监听（::，同时接受 IPv4 映射地址），
-// 这样 localhost 无论解析到 127.0.0.1 还是 ::1 都能连上。
-const HOST = process.env.HOST || null;
+/* 默认只绑定回环地址：本机自用，不向局域网开放。
+ * 要远程访问，必须显式设置 HOST 并同时设置 PW_TOKEN（否则拒绝启动）。 */
+const HOST = process.env.HOST || "127.0.0.1";
+const IS_LOOPBACK = ["127.0.0.1", "localhost", "::1"].includes(HOST);
+
+/* 默认不发跨域头（同源访问不受影响）。需要从别的站点调用时，
+ * 显式给 PW_ALLOWED_ORIGINS=https://your.site（逗号分隔）。 */
+const ALLOWED_ORIGINS = (process.env.PW_ALLOWED_ORIGINS || "")
+  .split(",").map((x) => x.trim().replace(/\/+$/, "")).filter(Boolean);
 const PW_TOKEN = process.env.PW_TOKEN || "";
 const MODEL_TIMEOUT = Number(process.env.PW_MODEL_TIMEOUT || 45000);
 
@@ -38,7 +44,8 @@ const MODEL_TIMEOUT = Number(process.env.PW_MODEL_TIMEOUT || 45000);
 const MIME = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
   ".mjs": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
-  ".json": "application/json; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg",
+  ".json": "application/json; charset=utf-8",
+  ".bat": "application/octet-stream", ".png": "image/png", ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml", ".ico": "image/x-icon",
   ".pdf": "application/pdf", ".txt": "text/plain; charset=utf-8", ".wasm": "application/wasm",
 };
@@ -50,16 +57,27 @@ function log(...args) {
     fs.appendFileSync(LOGFILE, line + "\n");
   } catch { /* 日志失败不影响服务 */ }
 }
+/* 只有来源在白名单里才会发跨域头；默认同源，不对外开放。 */
+function corsHeaders(res) {
+  const origin = res && res.pwOrigin;
+  if (!origin) return {};
+  const clean = String(origin).replace(/\/+$/, "");
+  if (!ALLOWED_ORIGINS.includes(clean)) return {};
+  return {
+    "Access-Control-Allow-Origin": clean,
+    "Vary": "Origin",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+    // Chrome 私有网络访问（PNA）：公网页面请求本机后端时的预检需要显式允许
+    "Access-Control-Allow-Private-Network": "true",
+  };
+}
+
 function send(res, code, obj, headers = {}) {
   const body = JSON.stringify(obj);
   res.writeHead(code, {
     "Content-Type": "application/json; charset=utf-8",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-    // Chrome 私有网络访问（PNA）：从公网页面（如 GitHub Pages）请求 localhost 时，
-    // 预检必须显式允许，否则请求会被浏览器直接拦掉，页面只能看到「连不上」。
-    "Access-Control-Allow-Private-Network": "true",
+    ...corsHeaders(res),
     ...headers,
   });
   res.end(body);
@@ -598,17 +616,45 @@ async function handleApi(req, res, pathname) {
 }
 
 /* ---------------- 静态托管 ---------------- */
+/* 静态文件白名单：只发前端资源，server/、tools/、docs/、.env、data/ 一律不可达。
+ * 路径先规范化再校验边界，最后用 realpath 复查，防止符号链接逃逸。 */
+const PUBLIC_DIRS = new Set(["assets", "css", "js", "vendor"]);
+const PUBLIC_FILES = new Set([
+  "index.html", "station.html", "story.html", "hall.html",
+  "parse.html", "core.html", "about.html", "start-backend.bat",
+]);
+
+function safeStaticPath(pathname) {
+  let decoded;
+  try { decoded = decodeURIComponent(pathname); } catch { return null; }
+  if (decoded.includes("\0") || decoded.includes("\\")) return null;
+  let p = decoded === "/" || decoded === "" ? "/index.html" : decoded;
+  const segs = p.replace(/^\/+/, "").split("/").filter(Boolean);
+  if (!segs.length) return null;
+  if (segs.some((x) => x.startsWith("."))) return null;          // .env / .git / 隐藏文件
+  const top = segs[0];
+  const single = segs.length === 1;
+  if (single ? !PUBLIC_FILES.has(top) : !PUBLIC_DIRS.has(top)) return null;
+  const file = path.resolve(ROOT, ...segs);
+  const rel = path.relative(ROOT, file);
+  if (!rel || rel.startsWith("..") || path.isAbsolute(rel)) return null;
+  let real, rootReal;
+  try { rootReal = fs.realpathSync(ROOT); real = fs.realpathSync(file); } catch { return null; }
+  const realRel = path.relative(rootReal, real);
+  if (!realRel || realRel.startsWith("..") || path.isAbsolute(realRel)) return null;
+  try { if (!fs.statSync(real).isFile()) return null; } catch { return null; }
+  return real;
+}
+
 function serveStatic(req, res, pathname) {
-  let p = decodeURIComponent(pathname);
-  if (p === "/" || p === "") p = "/index.html";
-  const file = path.join(ROOT, path.normalize(p).replace(/^(\.\.[/\\])+/, ""));
-  if (!file.startsWith(ROOT)) { fail(res, 403, "禁止访问"); return true; }
-  if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) return false;
+  const file = safeStaticPath(pathname);
+  if (!file) return false;
   const ext = path.extname(file).toLowerCase();
+  if (!MIME[ext]) return false;                                   // 只发已知类型
   res.writeHead(200, {
-    "Content-Type": MIME[ext] || "application/octet-stream",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Private-Network": "true",
+    "Content-Type": MIME[ext],
+    "Cache-Control": "no-cache",
+    ...corsHeaders(res),
   });
   fs.createReadStream(file).pipe(res);
   return true;
@@ -616,6 +662,7 @@ function serveStatic(req, res, pathname) {
 
 /* ---------------- 服务器 ---------------- */
 const server = http.createServer(async (req, res) => {
+  res.pwOrigin = req.headers.origin || "";
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const pathname = url.pathname;
   try {
@@ -630,12 +677,18 @@ const server = http.createServer(async (req, res) => {
     fail(res, code, e.message || "服务器错误");
   }
 });
+if (!IS_LOOPBACK && !PW_TOKEN) {
+  console.error("\n[拒绝启动] 绑定到非回环地址时必须设置 PW_TOKEN，否则同网段任何人都能用你的模型额度。");
+  console.error("  本机自用请去掉 HOST；确实要对外提供，请加 PW_TOKEN=一长串随机字符。\n");
+  process.exit(1);
+}
+
 const onListen = () => {
   log(`PaperWorld AI Core 已启动 · http://localhost:${PORT}`);
   log(`      本地页面：http://localhost:${PORT}/index.html   模型配置：http://localhost:${PORT}/core.html`);
   log(`鉴权：${PW_TOKEN ? "已开启（PW_TOKEN）" : "未开启（开发模式，生产请设置 PW_TOKEN）"}`);
-  if (!PW_TOKEN && !HOST) log("提醒：当前监听所有网卡且未开鉴权，同一局域网内其他人也能访问；只想本机用可设 HOST=127.0.0.1。");
+  log(`监听：${HOST}${IS_LOOPBACK ? "（仅本机）" : "（对外，已要求鉴权）"}`);
+  log(`跨域：${ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS.join(", ") : "关闭（只允许同源）"}`);
   log(`密钥存储：${process.env.PW_SECRET ? "PW_SECRET 环境变量" : KEYFILE}`);
 };
-if (HOST) server.listen(PORT, HOST, onListen);
-else server.listen(PORT, onListen);
+server.listen(PORT, HOST, onListen);

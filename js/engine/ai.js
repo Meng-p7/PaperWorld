@@ -39,7 +39,7 @@ async function call(path, { method = "GET", body, link, timeout = 20000 } = {}) 
     if (!res.ok) {
       const msg = data?.error || `请求失败（HTTP ${res.status}）`;
       const err = new Error(res.status === 401
-        ? "后端已开启鉴权：在 AI Core 的「高级」里填一次访问令牌"
+        ? "后端已开启鉴权：在「设置」的高级里填一次访问令牌"
         : msg);
       err.status = res.status;
       err.code = data?.code || (res.status === 401 ? "UNAUTHORIZED" : undefined);

@@ -171,3 +171,21 @@ doors = acts.map((act, i) => ({
 - `core.html` 的「后端地址」输入移入 `<details>` 高级折叠，仅在自定义域名或开启 `PW_TOKEN` 时使用；
 - `parse.html` 的状态条只在「本站点就是后端」时探测，其余情况不联网；
 - `start-backend.bat` 启动后自动打开浏览器，用户落在同源页面上，AI Core 零点击即已连接。
+
+## 4.2 信息架构
+
+**导航只有三个入口**：探索（`station.html`）、上传论文（`parse.html`）、设置（`core.html`）。Logo 回 `index.html`。桌面与移动端使用同一份标记，不再各自维护入口。
+
+**故事与档案合并**：`story.html` 是唯一展览页。四幕（`#story`）之后是完整档案（`#full-archive`），由 `js/engine/render.js` 的 `mountArchive({ bp, embedded })` 渲染——独立档案页与整合页共用同一段代码。`embedded` 为真时跳过标题、进度条、抽屉与顶栏初始化，交给 `story.js` 统一处理；`initReveal()` 在档案挂载之后调用，否则后插入的内容不会被观察。
+
+`hall.html` 与 `about.html` 保留为兼容跳转：前者带着 `?e=` 与 `#锚点` 跳到 `story.html`（无锚点时用 `#full-archive`），后者跳到 `core.html#about`。论文内部本来就有名为 `archive` 的分厅，所以档案区锚点命名为 `full-archive`，避免劫持旧深链接。
+
+**主题**：`data-theme="light"` 是所有阅读页的固定值，首页与空间站保留 `dark`（深空场景）。`initTheme()` 已移除，不再有切换按钮，也不再读取本地保存的主题。
+
+**设置页**：`core.html` 依次是模型配置 → 本机服务状态与启动引导 → 使用与数据（含版本）。任务列表卡片已移除，减少干扰。
+
+## 后端静态服务边界
+
+`safeStaticPath()` 只放行两类路径：`PUBLIC_DIRS`（assets / css / js / vendor）下的文件，以及 `PUBLIC_FILES` 里的七个页面与启动脚本。任何以 `.` 开头的段、`server/`、`tools/`、`docs/` 直接拒绝；随后用 `path.relative` 与 `fs.realpathSync` 双重校验边界，防止 `..` 与符号链接逃逸；最后只发 `MIME` 表里认识的扩展名。实测 `server/data/core.json`、`master.key`、`.env`、`docs/`、`README.md` 全部 404。
+
+**监听与跨域**：默认 `HOST=127.0.0.1`。绑定非回环地址但没设 `PW_TOKEN` 时拒绝启动。`ALLOWED_ORIGINS` 来自 `PW_ALLOWED_ORIGINS`，为空时不发任何 `Access-Control-*` 头，同源访问不受影响；命中白名单才回显该来源，并附带 `Access-Control-Allow-Private-Network`。

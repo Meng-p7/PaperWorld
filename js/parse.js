@@ -1,7 +1,7 @@
 /* PaperWorld 2.0 · 工作室控制器
  * 上传 → 解析 → 六维度分析 → 动态布展 →（可选模型讲解）→ 归档 → 进入空间展馆
  */
-import { el, $, initTheme, initTopbar, initMobileNav } from "./core/ui.js";
+import { el, $, initTopbar, initMobileNav } from "./core/ui.js";
 import { extractPdf } from "./engine/extract.js";
 import { analyze } from "./engine/analyze.js";
 import { curate, applyAIPlan } from "./engine/curate.js";
@@ -9,7 +9,6 @@ import { getCoreLink, submitCurate, waitTask, readConfig } from "./engine/ai.js"
 import { readStored, detect } from "./core/endpoint.js";
 import { saveExhibition, listExhibitions, deleteExhibition, makeId } from "./core/store.js";
 
-initTheme();
 initTopbar();
 initMobileNav();
 
@@ -84,8 +83,8 @@ function fail(err) {
       : storage
         ? "浏览器存储空间不足。请在「本机展览库」里移除旧展览，或清理站点数据后再试。"
         : /AI Core|模型|任务|后端/i.test(msg)
-          ? "AI Core 只影响讲解，不应中断本地布展。可以检查后端与密钥，或直接重试。"
-          : "可以重试一次；如果仍失败，换一篇有文字层的 PDF，或在 AI Core 页检查后端状态。";
+          ? "模型只影响讲解，不应中断本地布展。可以到设置检查后端与密钥，或直接重试。"
+          : "可以重试一次；如果仍失败，换一篇有文字层的 PDF，或到设置检查后端状态。";
   $pct.textContent = "中断";
   $pct.style.color = "var(--flag)";
   const actions = el("div", { class: "row wrap", style: "gap:8px;margin-top:14px" });
@@ -93,7 +92,7 @@ function fail(err) {
     onclick: () => run(lastJob.blob, lastJob.name) }));
   actions.append(el("button", { class: "btn btn--ghost btn--sm", text: "换一份 PDF",
     onclick: () => { $file.value = ""; $file.click(); } }));
-  if (/AI Core|模型|后端/i.test(msg)) actions.append(el("a", { class: "text-link", href: "core.html", text: "检查 AI Core 配置 →" }));
+  if (/AI Core|模型|后端/i.test(msg)) actions.append(el("a", { class: "text-link", href: "core.html", text: "去设置看看 →" }));
   $steps.append(el("div", { class: "callout callout--flag", style: "margin-top:14px;max-width:none" },
     el("div", { class: "callout__t", text: "布展没能完成" }),
     el("div", { class: "callout__x", text: msg }),
@@ -189,7 +188,7 @@ async function runCuration(bp) {
       console.warn("AI Core 策展降级：", e.message);
       return {
         source: "local", result: null, fallbackReason: e.message,
-        message: `AI Core 未能完成：${e.message}。已改用本地类型分析生成四幕，内容仍然只来自原文。可检查 AI Core 后重新尝试。`,
+        message: `模型没能完成：${e.message}。已改用本地分析生成四幕，内容仍然只来自原文。可到设置检查后重新尝试。`,
       };
     }
   }
@@ -247,10 +246,12 @@ async function run(blob, sourceName) {
       el("div", { class: "result__v", text: String(v) }),
       el("div", { class: "result__l", text: l })));
 
-    // 上传完成后默认进入四幕主线；空间站与完整资料是可选入口。
-    $("#enter").href = "story.html?e=" + encodeURIComponent(id);
-    $("#enter-station").href = "station.html?e=" + encodeURIComponent(id);
-    $("#enter-read").href = "hall.html?e=" + encodeURIComponent(id);
+    // 上传完成后直接进入整合后的展览：四幕在上，完整档案在同一页。
+    const hrefSuffix = "?e=" + encodeURIComponent(id);
+    $("#enter").href = "story.html" + hrefSuffix;
+    const stationLink = $("#enter-station");
+    if (stationLink) stationLink.href = "station.html" + hrefSuffix;
+    $("#enter-read").href = "story.html" + hrefSuffix + "#full-archive";
     renderAnalysis(bp, curation);
     const retry = $("#retry-ai");
     if (retry) retry.hidden = curation.source !== "local";
@@ -301,7 +302,7 @@ $("#demo").addEventListener("click", async (e) => {
 $("#retry-ai").addEventListener("click", async () => {
   if (!lastBP || !lastBlob || !lastId) return;
   if (!getCoreLink().backend) {
-    $("#result-note").textContent = "还没有配置 AI Core 后端。先到 AI Core 连接后端与模型，再回来点这里。";
+    $("#result-note").textContent = "还没有连上本机服务。先到「设置」启动一次，再回来点这里。";
     return;
   }
   const btn = $("#retry-ai");
@@ -353,7 +354,7 @@ function renderGallery() {
     el("div", { class: "gcard__a" },
       el("a", { class: "btn btn--sm", href: "story.html", text: "阅读四幕故事 →" }),
       el("a", { class: "btn btn--ghost btn--sm", href: "station.html", text: "进空间站" }),
-      el("a", { class: "text-link", href: "hall.html", text: "完整资料" }))));
+      el("a", { class: "text-link", href: "story.html#full-archive", text: "完整档案" }))));
 
   for (const x of listExhibitions()) {
     const date = new Date(x.created).toLocaleDateString("zh-CN");
@@ -365,7 +366,7 @@ function renderGallery() {
       el("div", { class: "gcard__a" },
         el("a", { class: "btn btn--sm", href: "story.html" + s, text: "阅读四幕故事 →" }),
         el("a", { class: "btn btn--ghost btn--sm", href: "station.html" + s, text: "进空间站" }),
-        el("a", { class: "text-link", href: "hall.html" + s, text: "完整资料" }),
+        el("a", { class: "text-link", href: "story.html" + s + "#full-archive", text: "完整档案" }),
         el("button", { class: "btn btn--ghost btn--sm", text: "移除",
           onclick: async () => { await deleteExhibition(x.id); renderGallery(); } }))));
   }

@@ -2,7 +2,7 @@
  * 同一套渲染器同时服务「策展过的示范展」与「用户上传后自动生成的展」。
  * 区别只在 blueprint 数据；渲染逻辑不写死任何一篇论文。
  */
-import { el, $, initTheme, initTopbar, initReveal, initMobileNav } from "../core/ui.js";
+import { el, $, initTopbar, initReveal, initMobileNav } from "../core/ui.js";
 import { initDrawer, openEvidence, openPage, withEv } from "../core/drawer.js";
 import { mountInteractive } from "../interactives.js";
 import { mountGeneric } from "./generic.js";
@@ -236,11 +236,12 @@ function renderArchive(groups) {
   const main = $("#halls");
   const holder = el("div", { class: "archive-groups" });
   const hash = location.hash ? decodeURIComponent(location.hash.slice(1)) : "";
+  const isSection = !hash || hash === "full-archive";
   const gidFromHash = hash.replace(/^group-/, "");
-  const targetGroup = hash
-    ? ARCHIVE_GROUPS.find((g) => (groups.get(g.id) || []).some((h) => h.id === hash))
-      || ARCHIVE_GROUPS.find((g) => g.id === gidFromHash)
-    : null;
+  const targetGroup = isSection
+    ? null
+    : ARCHIVE_GROUPS.find((g) => (groups.get(g.id) || []).some((h) => h.id === hash))
+      || ARCHIVE_GROUPS.find((g) => g.id === gidFromHash);
 
   ARCHIVE_GROUPS.forEach((g, i) => {
     const halls = groups.get(g.id) || [];
@@ -268,8 +269,11 @@ function initHoloNav() {
   if (!holder) return;
   const eid = new URLSearchParams(location.search).get("e");
   const suffix = eid ? "?e=" + encodeURIComponent(eid) : "";
-  $("#holo-back").href = "story.html" + suffix;
-  $("#holo-back").textContent = "← 科研故事";
+  const back = $("#holo-back");
+  if (back) {
+    back.href = "story.html" + suffix;
+    back.textContent = "← 科研故事";
+  }
 
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const flash = $("#hall-warp");
@@ -302,7 +306,7 @@ function initHoloNav() {
   }
 
   const hash = location.hash ? decodeURIComponent(location.hash.slice(1)) : "";
-  if (hash) {
+  if (hash && hash !== "full-archive") {
     const hall = document.getElementById(hash);
     const gid = hall ? ARCHIVE_GROUPS.find((g) => hall.closest("#group-" + g.id))?.id : hash.replace(/^group-/, "");
     setTimeout(() => { if (gid) warpTo(gid, hall && hall.id !== hash ? hash : null); }, 180);
@@ -315,26 +319,30 @@ function initHoloNav() {
   });
 }
 
-/* ---------------- 启动 ---------------- */
-async function boot() {
-  const result = await resolveBlueprint();
+/* ---------------- 挂载完整档案 ----------------
+ * 独立页面（hall.html）与整合后的展览页（story.html）共用这一段渲染。
+ * embedded=true 时只渲染档案本体，标题、主题跳转与页脚交给外层。 */
+export async function mountArchive({ bp = null, embedded = false } = {}) {
+  const result = bp ? { blueprint: bp } : await resolveBlueprint();
   if (result.error) {
-    $("#halls").append(el("section", { class: "facade page" },
+    const host = $("#halls");
+    if (!host) return;
+    host.append(el("section", { class: "facade page" },
       el("div", { class: "tag", text: "展览未找到" }),
       el("h1", { class: "h1", text: "这台设备上没有这场展览" }),
       el("p", { class: "lead", text: result.error }),
       el("a", { class: "btn", href: "parse.html", text: "去上传一篇论文" })));
-    initTheme(); initTopbar();
+    initTopbar();
     return;
   }
   BP = result.blueprint;
-  initDrawer({
+  if (!embedded) initDrawer({
     evidence: BP.evidence || {},
     pdf: BP.meta.pdf,
     paperLabel: BP.meta.paperLabel || BP.meta.sourceName || "原 PDF",
     pages: BP.meta.pages || 18,
   });
-  document.title = `PaperWorld · ${BP.meta.title || BP.halls[0].title}`.slice(0, 110);
+  if (!embedded) document.title = `PaperWorld · ${BP.meta.title || BP.halls[0].title}`.slice(0, 110);
 
   if (BP.meta.mode === "extractive") {
     const badge = el("span", { class: "auto-badge", text: BP.meta.curationLabel || "AUTO · 自动布展" });
@@ -348,7 +356,8 @@ async function boot() {
 
   const facade = (BP.halls || []).find((h) => h.kind === "facade");
   const main = $("#halls");
-  main.append(renderArchiveIntro(facade));
+  if (!main) return;
+  if (!embedded) main.append(renderArchiveIntro(facade));
   renderArchive(groupedHalls());
 
   // 馆末说明：自动生成展用 meta.colophon，示范展保留原有版本
@@ -358,12 +367,14 @@ async function boot() {
   const stamp = $(".footer .colophon-stamp");
   if (stamp) stamp.textContent = `${Object.keys(BP.evidence).length} 条证据 · ${(BP.halls || []).length} 个原始分厅 · 完整资料`;
 
-  buildProgress();
-  initTheme();
-  initTopbar();
-  initReveal();
-  initMobileNav();
+  if (!embedded) {
+    buildProgress();
+    initTopbar();
+    initReveal();
+    initMobileNav();
+  }
   initHoloNav();
 }
 
-boot();
+/* 独立档案页：保留旧入口可用；整合后的展览页由 story.js 主动调用 */
+if (!document.body.classList.contains("story-page")) mountArchive();

@@ -599,3 +599,118 @@ body { font-size: var(--fs-body); }
   .core-setup { padding: 18px; }
   .core-steps { font-size: 14.5px; }
 }
+
+/* ---------- 明亮阅读环境：把只为深空设计的低对比度元素校正 ---------- */
+[data-theme="light"] .cosmos-kicker {
+  display: inline-flex; align-items: center; gap: 12px;
+  font-family: var(--font-body); font-size: 13.5px; letter-spacing: .06em;
+  line-height: 1.6; text-transform: none; color: var(--gold);
+}
+[data-theme="light"] .cosmos-kicker::before { background: var(--gold); opacity: .55; width: 20px; }
+[data-theme="light"] .cosmos-kicker::after { border-color: var(--gold); opacity: .45; }
+
+[data-theme="light"] .story-hero__meta { color: var(--ink-2); }
+[data-theme="light"] .story-hero__meta b { color: var(--gold); }
+[data-theme="light"] .story-hero__note { color: var(--ink-2); }
+[data-theme="light"] .act-nav a { color: var(--ink-2); border-color: var(--line-strong); }
+[data-theme="light"] .text-link { color: var(--ink-2); }
+[data-theme="light"] .text-link:hover { color: var(--gold); }
+[data-theme="light"] .brand__sub { color: var(--ink-3); }
+[data-theme="light"] .colophon-text,
+[data-theme="light"] .colophon-stamp { color: var(--ink-3); }
+[data-theme="light"] .act__plain-tag { color: var(--ink-3); }
+
+/* ---------- 展览页：四幕之后的完整档案 ---------- */
+.archive {
+  width: 100%; margin: 88px auto 0; padding: 64px 0 24px;
+  border-top: 1px solid var(--line); background: var(--bg-elev);
+}
+.archive__head { width: min(960px, 100% - 48px); margin: 0 auto 28px; }
+.archive__eyebrow {
+  margin: 0 0 8px; font-size: 13.5px; letter-spacing: .08em; color: var(--gold);
+}
+.archive__title {
+  margin: 0; font-size: clamp(26px, 3.2vw, 38px); line-height: 1.25;
+  letter-spacing: -.02em; color: var(--ink); font-weight: 600;
+}
+.archive__lead { margin: 12px 0 0; font-size: 16px; line-height: 1.9; color: var(--ink-2); max-width: 64ch; }
+.archive__jump { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.archive__jump a {
+  padding: 6px 13px; border: 1px solid var(--line-strong); border-radius: 999px;
+  font-size: 14px; text-decoration: none; color: var(--ink-2);
+  transition: color .18s, border-color .18s, background .18s;
+}
+.archive__jump a:hover, .archive__jump a.is-on {
+  color: var(--gold); border-color: var(--gold-line); background: var(--gold-soft);
+}
+.story-refs { margin-top: 8px; }
+
+@media (max-width: 700px) {
+  .archive { margin-top: 64px; padding-top: 44px; }
+  .archive__head { width: calc(100% - 32px); }
+  .archive__lead { font-size: 15px; }
+  .archive__jump { gap: 6px; }
+  .archive__jump a { font-size: 13px; padding: 5px 11px; }
+}
+
+/* ---------- 设置页 ---------- */
+.settings { width: min(880px, 100% - 48px); margin: 0 auto; padding: 56px 0 96px; }
+.settings__head { margin-bottom: 28px; }
+.settings__eyebrow { margin: 0 0 10px; font-size: 13.5px; letter-spacing: .08em; color: var(--gold); }
+.settings__title {
+  margin: 0; font-size: clamp(30px, 4vw, 44px); line-height: 1.18;
+  letter-spacing: -.025em; color: var(--ink); font-weight: 600;
+}
+.settings__lead { margin: 14px 0 0; font-size: 17px; line-height: 1.9; color: var(--ink-2); max-width: 62ch; }
+
+.settings .core-card { border-radius: 12px; padding: 24px 26px; border-color: var(--line); background: var(--surface); }
+.settings .core-card__h h2 { font-size: 21px; }
+.settings .core-card__d { font-size: 15px; }
+.settings .core-conn { background: var(--surface); }
+
+.settings__notes { margin-top: 40px; padding-top: 28px; border-top: 1px solid var(--line); }
+.settings__notes h2 { margin: 0 0 16px; font-size: 19px; font-weight: 600; color: var(--ink); }
+.settings__facts { margin: 0; display: grid; grid-template-columns: 96px 1fr; gap: 12px 20px; }
+.settings__facts dt { font-size: 14px; color: var(--ink-3); line-height: 1.8; }
+.settings__facts dd { margin: 0; font-size: 15px; line-height: 1.85; color: var(--ink-2); }
+.settings__facts dd a { color: var(--gold); }
+
+@media (max-width: 700px) {
+  .settings { width: calc(100% - 32px); padding: 36px 0 72px; }
+  .settings__lead { font-size: 16px; }
+  .settings .core-card { padding: 20px; }
+  .settings__facts { grid-template-columns: 1fr; gap: 4px 0; }
+  .settings__facts dd { margin-bottom: 12px; }
+}
+
+/* 设置页：固定顶栏留出空间 + 明亮主题下的控件配色 */
+.settings { padding-top: 104px; }
+[data-theme="light"] .core-card__h h2 { color: var(--ink); }
+[data-theme="light"] .core-pill { color: var(--ink-2); border-color: var(--line-strong); background: transparent; }
+[data-theme="light"] .core-pill.is-ok { color: #177a4c; border-color: rgba(23,122,76,.4); }
+[data-theme="light"] .core-pill.is-warn { color: var(--gold); border-color: var(--gold-line); }
+[data-theme="light"] .core-pill.is-bad { color: var(--flag); border-color: rgba(179,55,42,.35); }
+[data-theme="light"] .core-provider {
+  color: var(--ink-2); border-color: var(--line-strong); background: var(--surface);
+}
+[data-theme="light"] .core-provider:hover { color: var(--ink); border-color: var(--gold-line); }
+[data-theme="light"] .core-provider.is-on { color: #fff; background: var(--gold); border-color: var(--gold); }
+[data-theme="light"] .cbtn {
+  color: var(--ink); border-color: var(--line-strong); background: var(--surface);
+}
+[data-theme="light"] .cbtn:hover { color: var(--gold); border-color: var(--gold-line); }
+[data-theme="light"] .cbtn--primary { color: #fff; background: var(--gold); border-color: var(--gold); }
+[data-theme="light"] .cbtn--primary:hover { color: #fff; }
+[data-theme="light"] .cbtn--ghost { background: transparent; color: var(--ink-2); }
+[data-theme="light"] .core-row input {
+  color: var(--ink); background: #fff; border-color: var(--line-strong);
+}
+[data-theme="light"] .core-row input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(156,100,16,.12); }
+[data-theme="light"] .core-row label { color: var(--ink-3); }
+[data-theme="light"] .core-out { color: var(--ink-2); }
+[data-theme="light"] .core-out.is-ok { color: #177a4c; }
+[data-theme="light"] .core-out.is-bad { color: var(--flag); }
+[data-theme="light"] .core-adv code, [data-theme="light"] .core-steps code {
+  background: rgba(0,0,0,.05); padding: 1px 5px; border-radius: 4px; font-size: .92em;
+}
+@media (max-width: 700px) { .settings { padding-top: 84px; } }

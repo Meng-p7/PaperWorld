@@ -10,6 +10,8 @@
 node server/index.js
 ```
 
+默认只绑定 `127.0.0.1`，只服务同源页面，不向局域网开放。
+
 然后打开 `http://localhost:8080` —— 它同时托管了仓库根目录的静态前端，本地一条命令即可跑通完整产品。
 因为前端与后端同源，AI Core 会自动连接，用户只需要填自己的 API Key，不需要知道后端地址。
 
@@ -37,7 +39,23 @@ PORT=8080
 
 所有 `/api/*` 在设置了 `PW_TOKEN` 时都需要 `Authorization: Bearer <token>`；每 IP 限速 60 次/分钟。
 
-跨域与私有网络访问：响应统一带 `Access-Control-Allow-Origin: *` 与 `Access-Control-Allow-Private-Network: true`，预检请求返回 204。这样从公网页面（如 GitHub Pages）请求本机后端不会被浏览器拦掉。
+### 网络边界
+
+| 变量 | 默认 | 说明 |
+| --- | --- | --- |
+| `HOST` | `127.0.0.1` | 绑非回环地址时必须同时设置 `PW_TOKEN`，否则拒绝启动 |
+| `PW_TOKEN` | 空 | 设置后所有 `/api/*` 需要 `Authorization: Bearer <token>` |
+| `PW_ALLOWED_ORIGINS` | 空 | 跨域白名单，逗号分隔。空表示只允许同源，不发任何 `Access-Control-*` 头 |
+
+要让 GitHub Pages 上的页面连本机后端，需要：
+
+```bash
+PW_ALLOWED_ORIGINS=https://meng-p7.github.io node server/index.js
+```
+
+### 静态文件
+
+只发前端资源（`assets/` `css/` `js/` `vendor/` 与七个页面）。`server/`、`data/`、`.env`、`master.key`、`core.json`、日志、`docs/` 一律 404；路径经过规范化、边界校验与 realpath 复查，并限制扩展名白名单。
 
 ## 安全设计
 

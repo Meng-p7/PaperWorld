@@ -12,7 +12,7 @@ import {
 } from "./engine/ai.js";
 import { baseFromContext, readStored, detect } from "./core/endpoint.js";
 
-createStarfield({ sky: $("#sky"), particles: $("#particles"), mode: "ambient" });
+if ($("#sky")) createStarfield({ sky: $("#sky"), particles: $("#particles"), mode: "ambient" });
 initMobileNav();
 
 const pill = (node, text, cls) => {
@@ -164,6 +164,7 @@ async function loadProviders() {
 /* ---------- 任务列表 ---------- */
 async function loadTasks() {
   const box = $("#tasks");
+  if (!box) return;
   const items = [];
   const l = getCoreLink();
   try {
